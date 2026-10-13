@@ -133,15 +133,25 @@ git clone git@github.com:ariemus-smk/pojokbaca.git
 cd pojokbaca
 ```
 
-### 2. Konfigurasi Basis Data
-Buka berkas `config/database.php` lalu sesuaikan kredensial database Anda:
+### 2. Konfigurasi Basis Data (.env)
+Salin berkas template `.env.example` menjadi `.env`, kemudian sesuaikan kredensial koneksi basis data Anda:
 
-```php
-$db_host = 'localhost';
-$db_user = 'root';              // Sesuaikan user database
-$db_pass = 'password_anda';      // Sesuaikan password database
-$db_name = 'db_pojokbaca_sejiram'; // Nama basis data
+```bash
+cp .env.example .env
 ```
+
+Buka dan edit berkas `.env`:
+```ini
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=db_pojokbaca_sejiram
+DB_USER=root
+DB_PASS=password_database_anda
+```
+
+> [!TIP]
+> Berkas `.env` telah tercatat di `.gitignore` sehingga pengaturan server lokal maupun server produksi tidak akan tertimpa atau terganggu saat melakukan `git pull` atau pembaruan kode.
+
 
 ### 3. Impor Skema Basis Data
 Buat basis data baru di MySQL lalu impor berkas `database.sql`:
@@ -193,8 +203,8 @@ Sistem telah dilengkapi dengan akun bawaan untuk pengujian awal:
 3. **Impor Database**:
    - Masuk ke **phpMyAdmin** di cPanel.
    - Pilih database yang baru dibuat, lalu impor berkas `database.sql`.
-4. **Sesuaikan Konfigurasi**:
-   - Sunting berkas `config/database.php` menggunakan editor cPanel dengan kredensial database hosting.
+4. **Sesuaikan Konfigurasi (.env)**:
+   - Buat atau sunting berkas `.env` di root hosting (bisa menyalin dari `.env.example`) dan masukkan nama database, user, serta password hosting Anda. Berkas ini tidak akan tertimpa saat update aplikasi berikutnya.
 5. **Set Izin Folder Upload**:
    - Pastikan folder `uploads/` dan sub-direktorinya memiliki izin akses tulis (permission `755` atau `775`).
 
