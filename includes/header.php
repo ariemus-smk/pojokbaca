@@ -10,6 +10,7 @@ $appSetting = $stmtSetting->fetch() ?: [
     'desa' => 'Desa Sejiram',
     'kabupaten' => 'Kabupaten Sambas',
     'alamat' => 'Jl. Pendidikan No. 01, Kantor Desa Sejiram',
+    'jam_operasional' => '08.00 - 15.30 WIB',
     'durasi_pinjam_hari' => 7,
     'denda_per_hari' => 1000,
     'nama_kades' => 'Kepala Desa Sejiram',
@@ -23,6 +24,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($pageTitle ?? 'Sistem Pojok Baca') ?> - Pojok Baca Desa Sejiram</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>

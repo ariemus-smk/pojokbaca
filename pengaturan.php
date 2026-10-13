@@ -11,13 +11,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_pengaturan']))
     $desa = trim($_POST['desa']);
     $kabupaten = trim($_POST['kabupaten']);
     $alamat = trim($_POST['alamat']);
+    $jamOperasional = trim($_POST['jam_operasional'] ?? '08.00 - 15.30 WIB');
     $durasi = (int)$_POST['durasi_pinjam_hari'];
     $denda = (int)$_POST['denda_per_hari'];
     $kades = trim($_POST['nama_kades']);
     $pengelola = trim($_POST['nama_pengelola']);
 
-    $stmt = $pdo->prepare("UPDATE pengaturan SET nama_instansi=?, desa=?, kabupaten=?, alamat=?, durasi_pinjam_hari=?, denda_per_hari=?, nama_kades=?, nama_pengelola=? WHERE id=1");
-    $stmt->execute([$namaInstansi, $desa, $kabupaten, $alamat, $durasi, $denda, $kades, $pengelola]);
+    $stmt = $pdo->prepare("UPDATE pengaturan SET nama_instansi=?, desa=?, kabupaten=?, alamat=?, jam_operasional=?, durasi_pinjam_hari=?, denda_per_hari=?, nama_kades=?, nama_pengelola=? WHERE id=1");
+    $stmt->execute([$namaInstansi, $desa, $kabupaten, $alamat, $jamOperasional, $durasi, $denda, $kades, $pengelola]);
     $pesan = "Konfigurasi instansi dan aturan peminjaman berhasil diperbarui.";
 }
 
@@ -28,7 +29,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <div class="mb-6">
     <h2 class="text-2xl font-bold text-slate-800">Pengaturan Identitas Desa & Aturan</h2>
-    <p class="text-sm text-slate-500">Atur kop surat laporan, tarif denda per hari, durasi batas peminjaman, serta nama pejabat pengesah.</p>
+    <p class="text-sm text-slate-500">Atur profil instansi, jam operasional, tarif denda per hari, durasi batas peminjaman, serta nama pejabat pengesah.</p>
 </div>
 
 <?php if ($pesan): ?>
@@ -56,9 +57,15 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="text" name="kabupaten" required value="<?= e($setting['kabupaten']) ?>" class="w-full border rounded-lg p-2 text-sm">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Kantor / Pojok Baca</label>
-                <input type="text" name="alamat" required value="<?= e($setting['alamat']) ?>" class="w-full border rounded-lg p-2 text-sm">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Jam Operasional Layanan</label>
+                <input type="text" name="jam_operasional" required value="<?= e($setting['jam_operasional'] ?? '08.00 - 15.30 WIB') ?>" placeholder="Contoh: 08.00 - 15.30 WIB" class="w-full border rounded-lg p-2 text-sm">
+                <span class="text-[11px] text-slate-500">Ditampilkan pada portal: "Buka Setiap Hari Kerja (jam operasional)"</span>
             </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Kantor / Pojok Baca</label>
+            <input type="text" name="alamat" required value="<?= e($setting['alamat']) ?>" class="w-full border rounded-lg p-2 text-sm">
         </div>
 
         <div class="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">

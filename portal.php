@@ -9,6 +9,7 @@ $setting = $stmtSetting->fetch() ?: [
     'desa' => 'Desa Sejiram',
     'kabupaten' => 'Kabupaten Sambas',
     'alamat' => 'Jl. Pendidikan No. 01, Kantor Desa Sejiram',
+    'jam_operasional' => '08.00 - 15.30 WIB',
     'durasi_pinjam_hari' => 7,
     'denda_per_hari' => 1000
 ];
@@ -79,6 +80,9 @@ $kategoriBukuList = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($setting['nama_instansi']) ?> - <?= e($setting['desa']) ?>, Kabupaten Sambas</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -94,7 +98,7 @@ $kategoriBukuList = [
             <div class="flex items-center gap-4">
                 <span><i class="fa-solid fa-location-dot mr-1 text-emerald-400"></i> <?= e($setting['alamat']) ?></span>
                 <span class="hidden md:inline">&bull;</span>
-                <span class="hidden md:inline"><i class="fa-solid fa-clock mr-1 text-emerald-400"></i> Buka Setiap Hari Kerja (08.00 - 15.30 WIB)</span>
+                <span class="hidden md:inline"><i class="fa-solid fa-clock mr-1 text-emerald-400"></i> Buka Setiap Hari Kerja (<?= e(!empty($setting['jam_operasional']) ? $setting['jam_operasional'] : '08.00 - 15.30 WIB') ?>)</span>
             </div>
             <div>
                 <a href="login.php" class="bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1 rounded text-xs font-semibold inline-flex items-center gap-1.5 transition">
@@ -483,6 +487,7 @@ $kategoriBukuList = [
                 <div>
                     <h5 class="font-bold text-white text-xs uppercase tracking-wider mb-3">Aturan Pinjam</h5>
                     <ul class="space-y-1.5 text-xs text-slate-400">
+                        <li>Jam Buka: <strong class="text-white"><?= e(!empty($setting['jam_operasional']) ? $setting['jam_operasional'] : '08.00 - 15.30 WIB') ?></strong></li>
                         <li>Batas Waktu: <strong class="text-white"><?= (int)$setting['durasi_pinjam_hari'] ?> Hari</strong></li>
                         <li>Denda Terlambat: <strong class="text-white">Rp <?= number_format($setting['denda_per_hari'], 0, ',', '.') ?>/hari</strong></li>
                         <li class="pt-2"><a href="login.php" class="text-emerald-400 hover:underline font-semibold">&rarr; Portal Khusus Petugas</a></li>
