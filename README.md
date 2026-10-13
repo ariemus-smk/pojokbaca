@@ -192,21 +192,26 @@ Sistem telah dilengkapi dengan akun bawaan untuk pengujian awal:
 
 ---
 
-## 🌐 Panduan Deployment ke Hosting / cPanel
+## 🌐 Panduan Deployment ke Hosting (CyberPanel / cPanel)
 
 1. **Unggah Berkas**:
-   - Kompres seluruh isi folder project ke dalam format `.zip`.
-   - Unggah dan ekstrak file `.zip` ke dalam direktori `public_html` (atau subdomain Anda) via File Manager cPanel.
+   - Kompres seluruh isi folder project ke dalam format `.zip` (pastikan berkas `.htaccess` ikut terunggah).
+   - Unggah dan ekstrak file `.zip` ke dalam direktori `public_html` (atau subdomain Anda) via File Manager.
 2. **Buat Database MySQL**:
-   - Masuk ke menu **MySQL Databases** di cPanel.
+   - Masuk ke menu **Databases > Create Database** di CyberPanel (atau **MySQL Databases** di cPanel).
    - Buat database baru beserta user dan password-nya, lalu berikan hak akses (*All Privileges*).
 3. **Impor Database**:
-   - Masuk ke **phpMyAdmin** di cPanel.
+   - Masuk ke **phpMyAdmin**.
    - Pilih database yang baru dibuat, lalu impor berkas `database.sql`.
 4. **Sesuaikan Konfigurasi (.env)**:
-   - Buat atau sunting berkas `.env` di root hosting (bisa menyalin dari `.env.example`) dan masukkan nama database, user, serta password hosting Anda. Berkas ini tidak akan tertimpa saat update aplikasi berikutnya.
+   - Buat berkas `.env` di root direktori domain (salin dari `.env.example`) dan isi dengan kredensial database server Anda. Berkas ini tidak akan tertimpa saat update aplikasi berikutnya.
 5. **Set Izin Folder Upload**:
    - Pastikan folder `uploads/` dan sub-direktorinya memiliki izin akses tulis (permission `755` atau `775`).
+6. **Catatan Khusus CyberPanel (OpenLiteSpeed)**:
+   - Setelah mengunggah atau mengubah berkas `.htaccess`, lakukan restart OpenLiteSpeed agar konfigurasi keamanan dan rewrite rules langsung aktif:
+     - Melalui Web Dashboard: **Server > Services Status > Reboot LiteSpeed**
+     - Melalui Terminal SSH: `systemctl restart lsws`
+
 
 ---
 

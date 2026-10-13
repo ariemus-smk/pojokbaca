@@ -1,0 +1,70 @@
+# ==============================================================================
+# KONFIGURASI KEAMANAN & WEBSERVER POJOK BACA PA'EDAH
+# Kompatibel untuk CyberPanel (OpenLiteSpeed / LiteSpeed) & Apache
+# ==============================================================================
+
+# 1. Nonaktifkan penjelajahan direktori (Directory Browsing)
+Options -Indexes -MultiViews
+
+# 2. Berkas Index Default
+DirectoryIndex index.php portal.php
+
+# 3. Pengaturan Charset
+AddDefaultCharset UTF-8
+
+# ==============================================================================
+# ATURAN REWRITE & PENCEGAHAN AKSES (MOD_REWRITE)
+# ==============================================================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # A. Blokir akses ke semua berkas & folder tersembunyi (berawalan titik, misal: .env, .git, .gitignore)
+    # Kecuali folder .well-known (diperlukan untuk verifikasi sertifikat SSL Let's Encrypt CyberPanel)
+    RewriteRule (^|/)\.(?!well-known) - [F,L]
+
+    # B. Blokir akses langsung ke berkas database dump, template konfigurasi, dan dokumentasi
+    RewriteRule ^(database\.sql|\.env|\.env\.example|\.env\.local|README\.md)$ - [F,L]
+    RewriteRule \.(sql|env|log|ini|bak|backup|old|sh|bash)$ - [F,L]
+
+    # C. Blokir akses langsung via URL ke direktori internal (config/ dan includes/)
+    # (Catatan: Skrip PHP tetap dapat memanggil via require/include di sisi server)
+    RewriteRule ^(config|includes)/ - [F,L]
+
+    # D. Proteksi Folder Unggahan: Larang eksekusi skrip (PHP/CGI/Python/Shell) di dalam folder uploads/
+    # (Pencegahan kritis terhadap injeksi Web Shell / Backdoor)
+    RewriteRule ^uploads/.*\.(php|phtml|php3|php4|php5|php7|php8|phps|pht|phar|cgi|pl|exe|sh|py|jsp|asp)$ - [F,L]
+</IfModule>
+
+# ==============================================================================
+# CADANGAN BLOKIR BERKAS SENSITIF (JIKA MOD_REWRITE NONAKTIF)
+# ==============================================================================
+<FilesMatch "(\.(env|sql|log|ini|bak|sh)|README\.md|\.gitignore)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# ==============================================================================
+# HTTP SECURITY HEADERS (PERLINDUNGAN BROWSER)
+# ==============================================================================
+<IfModule mod_headers.c>
+    # Mencegah browser menebak tipe konten di luar header (MIME-Sniffing protection)
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Mencegah serangan pembajakan klik (Clickjacking / UI Redressing)
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Mengaktifkan filter XSS bawaan pada browser modern & legacy
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Kebijakan perujuk (Referrer Policy) yang aman
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Batasi fitur sensor & media perangkat yang tidak digunakan oleh sistem perpustakaan
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
