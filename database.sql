@@ -134,6 +134,12 @@ CREATE TABLE IF NOT EXISTS `galeri` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+INSERT INTO `galeri` (`id`, `judul`, `kategori`, `foto`, `tanggal`, `keterangan`) VALUES
+(1, 'Kegiatan Membaca Bersama Anak-Anak Desa Sejiram', 'Kegiatan Pojok Baca', 'galeri_baca_anak.jpg', '2026-10-10', 'Kegiatan rutin membaca dongeng dan buku edukasi bersama adik-adik pelajar tingkat PAUD dan SD di Pojok Baca Pa\'edah Desa Sejiram guna menumbuhkan kecintaan literasi sejak dini.'),
+(2, 'Pelatihan Literasi & Keterampilan TP-PKK Sejiram', 'Kegiatan PKK', 'galeri_pkk_desa.jpg', '2026-10-12', 'Pertemuan bulanan ibu-ibu Tim Penggerak PKK Desa Sejiram yang diisi dengan pelatihan keterampilan kreasi olahan pangan lokal serta pengenalan buku panduan kesehatan keluarga.')
+ON DUPLICATE KEY UPDATE `id`=`id`;
+
+
 
 -- 9. Tabel Artikel & Berita Literasi Desa
 CREATE TABLE IF NOT EXISTS `artikel` (

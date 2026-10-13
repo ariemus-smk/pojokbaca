@@ -370,15 +370,32 @@ $kategoriBukuList = [
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <?php if (empty($galeriPublik)): ?>
+                <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">
+                    <i class="fa-regular fa-images text-4xl mb-2 text-slate-300"></i>
+                    <p class="text-sm font-medium">Belum ada dokumentasi foto kegiatan yang diunggah.</p>
+                </div>
+                <?php else: ?>
                 <?php foreach ($galeriPublik as $gl): 
                     $fotoPath = 'uploads/galeri/' . $gl['foto'];
                     $hasFoto = file_exists(__DIR__ . '/' . $fotoPath);
                 ?>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition duration-200 cursor-pointer group"
+                     onclick="bukaModalGaleri(this)"
+                     data-judul="<?= e($gl['judul']) ?>"
+                     data-kategori="<?= e($gl['kategori']) ?>"
+                     data-foto="<?= $hasFoto ? e($fotoPath) : '' ?>"
+                     data-tanggal="<?= date('d M Y', strtotime($gl['tanggal'])) ?>"
+                     data-keterangan="<?= e($gl['keterangan'] ?? '') ?>">
                     <div>
-                        <div class="aspect-video bg-slate-100 relative overflow-hidden flex items-center justify-center group">
+                        <div class="aspect-video bg-slate-100 relative overflow-hidden flex items-center justify-center">
                             <?php if ($hasFoto): ?>
                                 <img src="<?= e($fotoPath) ?>" alt="<?= e($gl['judul']) ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center">
+                                    <span class="w-10 h-10 rounded-full bg-white/95 text-emerald-800 flex items-center justify-center text-sm shadow-md transform scale-75 group-hover:scale-100 transition duration-200">
+                                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                    </span>
+                                </div>
                             <?php else: ?>
                                 <div class="text-center p-4 text-slate-400">
                                     <i class="fa-regular fa-image text-4xl mb-1 text-slate-300"></i>
@@ -391,7 +408,7 @@ $kategoriBukuList = [
                         </div>
                         <div class="p-4">
                             <span class="text-[11px] text-slate-400"><i class="fa-regular fa-calendar mr-1"></i> <?= date('d M Y', strtotime($gl['tanggal'])) ?></span>
-                            <h3 class="font-bold text-slate-800 text-sm mt-1 leading-snug line-clamp-2"><?= e($gl['judul']) ?></h3>
+                            <h3 class="font-bold text-slate-800 text-sm mt-1 leading-snug line-clamp-2 group-hover:text-emerald-700 transition"><?= e($gl['judul']) ?></h3>
                             <?php if (!empty($gl['keterangan'])): ?>
                             <p class="text-xs text-slate-500 mt-1.5 line-clamp-2"><?= e($gl['keterangan']) ?></p>
                             <?php endif; ?>
@@ -399,6 +416,7 @@ $kategoriBukuList = [
                     </div>
                 </div>
                 <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </section>
@@ -500,6 +518,108 @@ $kategoriBukuList = [
             </div>
         </div>
     </footer>
+
+    <!-- ================= MODAL DETAIL FOTO GALERI ================= -->
+    <div id="modalGaleri" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-5 overflow-y-auto" onclick="if(event.target === this) tutupModalGaleri()">
+        <div class="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col my-auto border border-slate-200">
+            <!-- Tombol Tutup Modal -->
+            <button type="button" onclick="tutupModalGaleri()" class="absolute top-3 right-3 z-20 w-9 h-9 rounded-full bg-slate-900/70 hover:bg-slate-950 text-white flex items-center justify-center transition shadow-lg focus:outline-none" aria-label="Tutup Modal">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+
+            <!-- Wadah Gambar Galeri Lengkap -->
+            <div id="modalGaleriImgWrapper" class="relative bg-slate-950 flex items-center justify-center min-h-[220px] max-h-[60vh] sm:max-h-[70vh] overflow-hidden select-none">
+                <img id="modalGaleriImg" src="" alt="" class="w-full h-auto max-h-[60vh] sm:max-h-[70vh] object-contain block">
+                <div id="modalGaleriNoImg" class="hidden py-16 text-center text-slate-400">
+                    <i class="fa-regular fa-image text-5xl mb-2 text-slate-500"></i>
+                    <p class="text-xs">Foto dokumentasi tidak ditemukan pada server</p>
+                </div>
+            </div>
+
+            <!-- Bagian Informasi: Kategori, Tanggal, Judul & Keterangan -->
+            <div class="p-5 sm:p-6 bg-white space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span id="modalGaleriKategori" class="text-xs font-bold px-3 py-1 rounded-full shadow-sm"></span>
+                    <span id="modalGaleriTanggal" class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-regular fa-calendar text-slate-400"></i>
+                        <span></span>
+                    </span>
+                </div>
+
+                <h3 id="modalGaleriJudul" class="text-lg sm:text-xl font-bold text-slate-900 leading-snug"></h3>
+
+                <div id="modalGaleriKetWrapper" class="pt-2 border-t border-slate-100">
+                    <p class="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">Keterangan Kegiatan</p>
+                    <p id="modalGaleriKeterangan" class="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function bukaModalGaleri(el) {
+        const modal = document.getElementById('modalGaleri');
+        const img = document.getElementById('modalGaleriImg');
+        const noImg = document.getElementById('modalGaleriNoImg');
+        const kategori = document.getElementById('modalGaleriKategori');
+        const tanggalText = document.getElementById('modalGaleriTanggal').querySelector('span');
+        const judul = document.getElementById('modalGaleriJudul');
+        const ket = document.getElementById('modalGaleriKeterangan');
+        const ketWrapper = document.getElementById('modalGaleriKetWrapper');
+
+        const foto = el.getAttribute('data-foto') || '';
+        const kat = el.getAttribute('data-kategori') || 'Kegiatan';
+        const jdl = el.getAttribute('data-judul') || '';
+        const tgl = el.getAttribute('data-tanggal') || '';
+        const keterangan = el.getAttribute('data-keterangan') || '';
+
+        if (foto) {
+            img.src = foto;
+            img.alt = jdl;
+            img.classList.remove('hidden');
+            noImg.classList.add('hidden');
+        } else {
+            img.src = '';
+            img.classList.add('hidden');
+            noImg.classList.remove('hidden');
+        }
+
+        kategori.textContent = kat;
+        if (kat === 'Kegiatan PKK') {
+            kategori.className = 'text-xs font-bold px-3 py-1 rounded-full shadow-sm bg-rose-600 text-white';
+        } else {
+            kategori.className = 'text-xs font-bold px-3 py-1 rounded-full shadow-sm bg-emerald-700 text-white';
+        }
+
+        tanggalText.textContent = tgl;
+        judul.textContent = jdl;
+
+        if (keterangan.trim() !== '') {
+            ket.textContent = keterangan;
+            ketWrapper.classList.remove('hidden');
+        } else {
+            ketWrapper.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function tutupModalGaleri() {
+        const modal = document.getElementById('modalGaleri');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+    }
+
+    // Tutup modal ketika tombol Escape ditekan
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            tutupModalGaleri();
+        }
+    });
+    </script>
 
 </body>
 </html>
