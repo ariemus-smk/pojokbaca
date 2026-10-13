@@ -108,6 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Masuk ke Sistem
             </button>
         </form>
+        <a href="portal.php" class="mt-3 text-center block w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-sm">
+            Kembali ke Portal Publik
+        </a>
     </div>
 </body>
 </html>

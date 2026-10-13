@@ -64,9 +64,11 @@ Aplikasi ini menggabungkan dua ekosistem terpadu:
 * **Format Cetak KOP Surat Resmi**: Cetak laporan rekapitulasi sirkulasi bulanan siap tanda tangan Kepala Desa & Pengelola Pojok Baca (`Window Print` teroptimasi CSS).
 * **Ekspor Data Excel / CSV**: Unduh data laporan ke format `.csv` dengan penanganan UTF-8 BOM untuk kompatibilitas penuh Microsoft Excel.
 
-### 6. 🔒 Keamanan & Hak Akses
-* **Multi-Role User**: Pemisahan hak akses antara **Administrator** (akses penuh termasuk pengaturan) dan **Petugas** (operasional harian).
-* **Proteksi Keamanan**: Query database berbasis *Prepared Statements* (PDO), sanitasi XSS (`htmlspecialchars`), serta enkripsi kata sandi menggunakan `password_hash()` BCRYPT.
+### 6. 🔒 Keamanan, Manajemen Pengguna & Profil
+* **User Manager Terintegrasi (`pengguna.php`)**: Administrator dapat menambah pengguna baru, menyunting data akun, mengganti kata sandi pengguna lain, mengubah status (aktif/nonaktif), serta menghapus akun dengan proteksi anti-lockout (mencegah penghapusan akun sendiri atau penghapusan admin terakhir).
+* **Profil Diri & Ganti Kata Sandi (`profil.php`)**: Seluruh pengguna (Admin & Petugas) dapat memperbarui nama lengkap, username, serta mengganti kata sandi dengan verifikasi kata sandi saat ini dan tombol intip (*toggle show/hide password*).
+* **Multi-Role User**: Pemisahan hak akses ketat antara **Administrator** (akses penuh termasuk pengaturan dan user manager) dan **Petugas** (operasional harian).
+* **Proteksi Keamanan**: Query database berbasis *Prepared Statements* (PDO anti SQL-Injection), sanitasi XSS (`htmlspecialchars`), serta enkripsi kata sandi menggunakan `password_hash()` BCRYPT.
 
 ---
 
@@ -100,9 +102,11 @@ pojokbaca/
 ├── login.php                 # Halaman autentikasi petugas & admin
 ├── logout.php                # Handler keluar sesi sistem
 ├── peminjaman.php            # Modul transaksi sirkulasi peminjaman
+├── pengguna.php              # User Manager: manajemen akun admin & petugas (Admin)
 ├── pengaturan.php            # Konfigurasi profil desa & aturan denda (Admin)
 ├── pengembalian.php          # Modul proses pengembalian buku & denda
-└── portal.php                # Halaman portal utama untuk masyarakat umum
+├── portal.php                # Halaman portal utama untuk masyarakat umum
+└── profil.php                # Modul profil diri & ubah kata sandi pengguna
 ```
 
 ---

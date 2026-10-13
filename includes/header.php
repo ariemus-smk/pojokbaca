@@ -81,10 +81,16 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fa-solid fa-file-pdf w-5 text-emerald-300"></i> Cetak Laporan
                     </a>
                     <?php if (($_SESSION['user_role'] ?? '') === 'admin'): ?>
+                    <a href="pengguna.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'pengguna.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
+                        <i class="fa-solid fa-users-gear w-5 text-emerald-300"></i> Manajemen Pengguna
+                    </a>
                     <a href="pengaturan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'pengaturan.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
                         <i class="fa-solid fa-sliders w-5 text-emerald-300"></i> Pengaturan Desa
                     </a>
                     <?php endif; ?>
+                    <a href="profil.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'profil.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
+                        <i class="fa-solid fa-id-card-clip w-5 text-emerald-300"></i> Profil & Akun
+                    </a>
                 </nav>
             </div>
             
@@ -93,10 +99,17 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <i class="fa-solid fa-globe"></i> Buka Portal Publik
                 </a>
                 <div class="bg-emerald-900/60 p-3 rounded-lg mb-2">
-                    <p class="text-white font-semibold flex items-center gap-1.5">
-                        <i class="fa-solid fa-circle-user text-sm text-emerald-300"></i> <?= e($_SESSION['user_nama'] ?? 'Petugas') ?>
-                    </p>
-                    <p class="text-[11px] text-emerald-300 capitalize">Role: <span class="font-bold text-white"><?= e($_SESSION['user_role'] ?? 'petugas') ?></span></p>
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="text-white font-semibold flex items-center gap-1.5 truncate">
+                            <i class="fa-solid fa-circle-user text-sm text-emerald-300"></i> <?= e($_SESSION['user_nama'] ?? 'Petugas') ?>
+                        </p>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] text-emerald-300 capitalize">Role: <span class="font-bold text-white"><?= e($_SESSION['user_role'] ?? 'petugas') ?></span></p>
+                        <a href="profil.php" class="text-[11px] text-emerald-200 hover:text-white underline font-semibold flex items-center gap-1 transition">
+                            <i class="fa-solid fa-pen-to-square"></i> Profil
+                        </a>
+                    </div>
                 </div>
                 <a href="logout.php" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem?')" class="inline-flex items-center gap-2 bg-rose-700/90 hover:bg-rose-700 text-white px-3 py-2 rounded-lg text-xs font-semibold w-full justify-center transition shadow-sm">
                     <i class="fa-solid fa-right-from-bracket"></i> Keluar (Logout)
