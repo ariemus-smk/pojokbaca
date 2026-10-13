@@ -422,9 +422,9 @@ $kategoriBukuList = [
     </section>
 
     <!-- Section Presensi Kunjungan Mandiri (Buku Tamu Digital) -->
-    <section id="buku-tamu" class="py-16 bg-white border-b border-slate-200">
+    <section id="buku-tamu" class="py-16 bg-gradient-to-br from-emerald-800 to-teal-900 border-b border-slate-200">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-gradient-to-br from-emerald-800 to-teal-900 rounded-3xl p-8 sm:p-12 text-white shadow-xl relative overflow-hidden">
+            <div class="rounded-3xl p-8 sm:p-12 text-white shadow-xl relative overflow-hidden">
                 <div class="relative z-10">
                     <div class="text-center max-w-xl mx-auto mb-8">
                         <span class="text-xs font-bold uppercase tracking-wider text-emerald-300 bg-emerald-700/60 px-3 py-1 rounded-full inline-block mb-3">Presensi Pemustaka</span>
