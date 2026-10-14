@@ -229,7 +229,7 @@ require_once __DIR__ . '/includes/header.php';
                     <th class="p-3">Judul Artikel & Penulis</th>
                     <th class="p-3">Kategori</th>
                     <th class="p-3">Tanggal Terbit</th>
-                    <th class="p-3 text-center">Dibaca</th>
+                    <th class="p-3 text-center">Statistik</th>
                     <th class="p-3 text-center">Status</th>
                     <th class="p-3 text-center">Aksi</th>
                 </tr>
@@ -263,7 +263,10 @@ require_once __DIR__ . '/includes/header.php';
                         </span>
                     </td>
                     <td class="p-3 text-xs text-slate-600"><?= date('d/m/Y', strtotime($art['tanggal'])) ?></td>
-                    <td class="p-3 text-center text-xs font-mono text-slate-600"><?= (int)$art['views'] ?>x</td>
+                    <td class="p-3 text-center text-xs font-mono text-slate-600">
+                        <div title="<?= (int)$art['views'] ?> kali dibaca"><i class="fa-solid fa-eye text-slate-400 mr-1"></i><?= (int)$art['views'] ?>x</div>
+                        <div class="text-rose-600 font-semibold mt-0.5" title="<?= (int)($art['likes'] ?? 0) ?> disukai"><i class="fa-solid fa-heart mr-1"></i><?= (int)($art['likes'] ?? 0) ?></div>
+                    </td>
                     <td class="p-3 text-center">
                         <span class="text-xs px-2.5 py-0.5 rounded font-semibold <?= $art['status'] === 'Publish' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' ?>">
                             <?= e($art['status']) ?>
@@ -275,6 +278,11 @@ require_once __DIR__ . '/includes/header.php';
                             <a href="baca_artikel.php?id=<?= $art['id'] ?>" target="_blank" title="Baca Artikel di Tab Baru" class="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center justify-center transition shadow-sm">
                                 <i class="fa-solid fa-eye text-xs"></i>
                             </a>
+
+                            <!-- Tombol Salin Tautan / Bagikan -->
+                            <button type="button" onclick="salinTautanPublik('<?= $art['id'] ?>')" title="Salin Tautan Artikel Publik" aria-label="Salin Tautan Publik" class="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition shadow-sm">
+                                <i class="fa-solid fa-share-nodes text-xs"></i>
+                            </button>
 
                             <!-- Tombol Edit Artikel -->
                             <button type="button" onclick="bukaModalEdit(<?= htmlspecialchars(json_encode([
@@ -584,6 +592,20 @@ window.addEventListener('click', function(e) {
     if (e.target === modalTambah) tutupModalTambah();
     if (e.target === modalEdit) tutupModalEdit();
 });
+
+// Salin Tautan Artikel Publik
+function salinTautanPublik(id) {
+    const url = window.location.origin + window.location.pathname.replace('artikel.php', 'baca_artikel.php') + '?id=' + id;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Tautan publik artikel berhasil disalin ke papan klip:\n\n' + url);
+        }).catch(() => {
+            prompt('Salin tautan artikel publik berikut:', url);
+        });
+    } else {
+        prompt('Salin tautan artikel publik berikut:', url);
+    }
+}
 
 // Tutup modal dengan Escape
 window.addEventListener('keydown', function(e) {

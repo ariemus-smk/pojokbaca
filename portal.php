@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/config/database.php';
+
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 80) == 443) ? "https://" : "http://";
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$baseUrl = $protocol . $host;
+$likedArticlesSession = $_SESSION['liked_articles'] ?? [];
 
 // Pengaturan Instansi Desa
 $stmtSetting = $pdo->query("SELECT * FROM pengaturan LIMIT 1");
@@ -316,6 +325,8 @@ $kategoriBukuList = [
                 <?php foreach ($artikelPublik as $art): 
                     $gbrPath = !empty($art['gambar']) ? 'uploads/artikel/' . $art['gambar'] : null;
                     $hasGbr = $gbrPath && file_exists(__DIR__ . '/' . $gbrPath);
+                    $artUrl = $baseUrl . '/baca_artikel.php?id=' . $art['id'];
+                    $isArtLiked = in_array($art['id'], $likedArticlesSession, true);
                 ?>
                 <article class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition">
                     <div>
@@ -346,10 +357,32 @@ $kategoriBukuList = [
                             </p>
                         </div>
                     </div>
-                    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs">
-                        <span class="text-slate-400"><i class="fa-solid fa-eye mr-1"></i> <?= (int)$art['views'] ?> dibaca</span>
+                    <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-400" title="<?= (int)$art['views'] ?> kali dibaca">
+                                <i class="fa-solid fa-eye mr-1"></i> <?= (int)$art['views'] ?>
+                            </span>
+                            <span class="text-slate-300">&bull;</span>
+                            <button type="button" onclick="likeArtikelPortal(event, <?= $art['id'] ?>)" 
+                                    id="portalLikeBtn_<?= $art['id'] ?>"
+                                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition <?= $isArtLiked ? 'bg-rose-50 text-rose-600 font-bold' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50' ?>" 
+                                    title="Sukai artikel ini">
+                                <i class="<?= $isArtLiked ? 'fa-solid' : 'fa-regular' ?> fa-heart text-rose-500 text-xs" id="portalLikeIcon_<?= $art['id'] ?>"></i>
+                                <span id="portalLikeCount_<?= $art['id'] ?>" class="text-xs"><?= (int)($art['likes'] ?? 0) ?></span>
+                            </button>
+                            <button type="button" onclick="bukaModalSharePortal(event, <?= htmlspecialchars(json_encode([
+                                'id' => $art['id'],
+                                'judul' => $art['judul'],
+                                'kategori' => $art['kategori'],
+                                'url' => $artUrl
+                            ]), ENT_QUOTES, 'UTF-8') ?>)" 
+                                    class="w-7 h-7 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 flex items-center justify-center transition" 
+                                    title="Bagikan artikel ini">
+                                <i class="fa-solid fa-share-nodes text-xs"></i>
+                            </button>
+                        </div>
                         <a href="baca_artikel.php?id=<?= $art['id'] ?>" class="text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1">
-                            Baca Selengkapnya <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            Baca <i class="fa-solid fa-arrow-right text-[10px]"></i>
                         </a>
                     </div>
                 </article>
@@ -605,6 +638,120 @@ $kategoriBukuList = [
         document.body.classList.add('overflow-hidden');
     }
 
+    <!-- ================= MODAL BAGIKAN ARTIKEL (PORTAL) ================= -->
+    <div id="modalSharePortal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-fadeIn my-auto">
+            <div class="bg-gradient-to-r from-emerald-800 to-teal-800 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-share-nodes text-emerald-300"></i> Bagikan Artikel & Kabar Desa
+                </h3>
+                <button type="button" onclick="tutupModalSharePortal()" class="text-emerald-200 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <span id="shareModalKat" class="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full"></span>
+                    <h4 id="shareModalJudul" class="font-bold text-slate-900 text-sm mt-1.5 leading-snug"></h4>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100">
+                    <p class="text-xs font-semibold text-slate-600 mb-3">Pilih Media Sosial:</p>
+                    <div class="grid grid-cols-4 gap-3 text-center">
+                        <a id="shareWaLink" href="#" target="_blank" rel="noopener noreferrer" class="p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl flex flex-col items-center justify-center gap-1 transition group">
+                            <i class="fa-brands fa-whatsapp text-2xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-[11px] font-bold">WhatsApp</span>
+                        </a>
+                        <a id="shareFbLink" href="#" target="_blank" rel="noopener noreferrer" class="p-3 bg-blue-50 hover:bg-blue-100 text-[#1877F2] rounded-2xl flex flex-col items-center justify-center gap-1 transition group">
+                            <i class="fa-brands fa-facebook-f text-2xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-[11px] font-bold">Facebook</span>
+                        </a>
+                        <a id="shareXLink" href="#" target="_blank" rel="noopener noreferrer" class="p-3 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-2xl flex flex-col items-center justify-center gap-1 transition group">
+                            <i class="fa-brands fa-x-twitter text-2xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-[11px] font-bold">X (Twitter)</span>
+                        </a>
+                        <a id="shareTgLink" href="#" target="_blank" rel="noopener noreferrer" class="p-3 bg-sky-50 hover:bg-sky-100 text-[#229ED9] rounded-2xl flex flex-col items-center justify-center gap-1 transition group">
+                            <i class="fa-brands fa-telegram text-2xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-[11px] font-bold">Telegram</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tautan Langsung Artikel:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="shareInputUrl" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 outline-none select-all">
+                        <button type="button" onclick="salinUrlDariModal()" id="btnSalinModal" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shadow-sm">
+                            <i class="fa-solid fa-copy"></i> Salin
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tombol Web Share Native untuk Smartphone -->
+                <div id="wrapperNativeShare" class="hidden pt-2">
+                    <button type="button" onclick="panggilNativeShareDariModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-emerald-600"></i> Opsi Berbagi Bawaan Perangkat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Portal -->
+    <div id="toastPortal" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2.5 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-xl border border-slate-700">
+        <i id="toastPortalIcon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+        <span id="toastPortalMsg">Tautan berhasil disalin!</span>
+    </div>
+
+    <script>
+    function bukaModalGaleri(el) {
+        const modal = document.getElementById('modalGaleri');
+        const img = document.getElementById('modalGaleriImg');
+        const noImg = document.getElementById('modalGaleriNoImg');
+        const kategori = document.getElementById('modalGaleriKategori');
+        const tanggalText = document.getElementById('modalGaleriTanggal').querySelector('span');
+        const judul = document.getElementById('modalGaleriJudul');
+        const ket = document.getElementById('modalGaleriKeterangan');
+        const ketWrapper = document.getElementById('modalGaleriKetWrapper');
+
+        const foto = el.getAttribute('data-foto') || '';
+        const kat = el.getAttribute('data-kategori') || 'Kegiatan';
+        const jdl = el.getAttribute('data-judul') || '';
+        const tgl = el.getAttribute('data-tanggal') || '';
+        const keterangan = el.getAttribute('data-keterangan') || '';
+
+        if (foto) {
+            img.src = foto;
+            img.alt = jdl;
+            img.classList.remove('hidden');
+            noImg.classList.add('hidden');
+        } else {
+            img.src = '';
+            img.classList.add('hidden');
+            noImg.classList.remove('hidden');
+        }
+
+        kategori.textContent = kat;
+        if (kat === 'Kegiatan PKK') {
+            kategori.className = 'text-xs font-bold px-3 py-1 rounded-full shadow-sm bg-rose-600 text-white';
+        } else {
+            kategori.className = 'text-xs font-bold px-3 py-1 rounded-full shadow-sm bg-emerald-700 text-white';
+        }
+
+        tanggalText.textContent = tgl;
+        judul.textContent = jdl;
+
+        if (keterangan.trim() !== '') {
+            ket.textContent = keterangan;
+            ketWrapper.classList.remove('hidden');
+        } else {
+            ketWrapper.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
     function tutupModalGaleri() {
         const modal = document.getElementById('modalGaleri');
         if (modal) {
@@ -613,10 +760,135 @@ $kategoriBukuList = [
         }
     }
 
-    // Tutup modal ketika tombol Escape ditekan
+    // Fungsi Like & Share Portal
+    function showToastPortal(msg, isSuccess = true) {
+        const toast = document.getElementById('toastPortal');
+        const toastMsg = document.getElementById('toastPortalMsg');
+        const toastIcon = document.getElementById('toastPortalIcon');
+        if (!toast) return;
+
+        toastMsg.textContent = msg;
+        toastIcon.className = isSuccess ? 'fa-solid fa-circle-check text-emerald-400 text-sm' : 'fa-solid fa-circle-exclamation text-rose-400 text-sm';
+        toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+        toast.classList.add('translate-y-0', 'opacity-100');
+
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.remove('translate-y-0', 'opacity-100');
+        }, 3000);
+    }
+
+    function likeArtikelPortal(event, artikelId) {
+        if (event) event.stopPropagation();
+        const btn = document.getElementById('portalLikeBtn_' + artikelId);
+        const icon = document.getElementById('portalLikeIcon_' + artikelId);
+        const count = document.getElementById('portalLikeCount_' + artikelId);
+
+        fetch('like_artikel.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: artikelId, action: 'toggle' })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                count.textContent = data.likes;
+                if (data.liked) {
+                    btn.className = "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition bg-rose-50 text-rose-600 font-bold";
+                    icon.className = "fa-solid fa-heart text-rose-500 text-xs";
+                    showToastPortal(data.message, true);
+                } else {
+                    btn.className = "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition text-slate-500 hover:text-rose-600 hover:bg-rose-50";
+                    icon.className = "fa-regular fa-heart text-rose-500 text-xs";
+                    showToastPortal(data.message, false);
+                }
+            } else {
+                showToastPortal(data.message || 'Gagal memproses suka.', false);
+            }
+        })
+        .catch(() => {
+            showToastPortal('Gagal menghubungi server.', false);
+        });
+    }
+
+    let activeShareArt = null;
+
+    function bukaModalSharePortal(event, art) {
+        if (event) event.stopPropagation();
+        activeShareArt = art;
+
+        document.getElementById('shareModalKat').textContent = art.kategori || 'Artikel';
+        document.getElementById('shareModalJudul').textContent = art.judul || '';
+        document.getElementById('shareInputUrl').value = art.url;
+
+        const shareText = encodeURIComponent(art.judul + "\n" + art.url);
+        const encUrl = encodeURIComponent(art.url);
+        const encTitle = encodeURIComponent(art.judul);
+
+        document.getElementById('shareWaLink').href = 'https://api.whatsapp.com/send?text=' + shareText;
+        document.getElementById('shareFbLink').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encUrl;
+        document.getElementById('shareXLink').href = 'https://twitter.com/intent/tweet?url=' + encUrl + '&text=' + encTitle;
+        document.getElementById('shareTgLink').href = 'https://t.me/share/url?url=' + encUrl + '&text=' + encTitle;
+
+        if (navigator.share) {
+            document.getElementById('wrapperNativeShare').classList.remove('hidden');
+        }
+
+        document.getElementById('modalSharePortal').classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function tutupModalSharePortal() {
+        document.getElementById('modalSharePortal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function salinUrlDariModal() {
+        const input = document.getElementById('shareInputUrl');
+        const btn = document.getElementById('btnSalinModal');
+        if (!input) return;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(input.value).then(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Tersalin!';
+                showToastPortal('Tautan artikel berhasil disalin!');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fa-solid fa-copy"></i> Salin';
+                }, 2500);
+            }).catch(() => {
+                input.select();
+                document.execCommand('copy');
+                showToastPortal('Tautan artikel berhasil disalin!');
+            });
+        } else {
+            input.select();
+            document.execCommand('copy');
+            showToastPortal('Tautan artikel berhasil disalin!');
+        }
+    }
+
+    function panggilNativeShareDariModal() {
+        if (navigator.share && activeShareArt) {
+            navigator.share({
+                title: activeShareArt.judul,
+                text: activeShareArt.judul + ' - Pojok Baca Pa\'edah Desa Sejiram',
+                url: activeShareArt.url
+            }).catch(() => {});
+        }
+    }
+
+    // Tutup modal ketika tombol Escape ditekan atau klik backdrop
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             tutupModalGaleri();
+            tutupModalSharePortal();
+        }
+    });
+
+    window.addEventListener('click', function(e) {
+        const modalShare = document.getElementById('modalSharePortal');
+        if (e.target === modalShare) {
+            tutupModalSharePortal();
         }
     });
     </script>

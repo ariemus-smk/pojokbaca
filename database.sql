@@ -152,6 +152,7 @@ CREATE TABLE IF NOT EXISTS `artikel` (
   `penulis` VARCHAR(100) NOT NULL,
   `tanggal` DATE NOT NULL,
   `views` INT NOT NULL DEFAULT 0,
+  `likes` INT NOT NULL DEFAULT 0,
   `status` ENUM('Publish', 'Draft') NOT NULL DEFAULT 'Publish',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
