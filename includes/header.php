@@ -18,6 +18,7 @@ $appSetting = $stmtSetting->fetch() ?: [
     'nama_pengelola' => 'Pengelola Pojok Baca'
 ];
 $currentPage = basename($_SERVER['PHP_SELF']);
+$pendingAnggotaCount = (int)$pdo->query("SELECT COUNT(*) FROM anggota WHERE status = 'Menunggu'")->fetchColumn();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -61,8 +62,16 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <a href="buku.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'buku.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
                         <i class="fa-solid fa-book w-5 text-emerald-300"></i> Koleksi Buku
                     </a>
-                    <a href="anggota.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'anggota.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
-                        <i class="fa-solid fa-users w-5 text-emerald-300"></i> Data Anggota
+                    <a href="anggota.php" class="flex items-center justify-between px-3 py-2.5 rounded-lg transition <?= $currentPage === 'anggota.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-users w-5 text-emerald-300"></i>
+                            <span>Data Anggota</span>
+                        </div>
+                        <?php if ($pendingAnggotaCount > 0): ?>
+                        <span class="bg-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm animate-pulse" title="<?= $pendingAnggotaCount ?> pendaftar baru menunggu verifikasi">
+                            <?= $pendingAnggotaCount ?>
+                        </span>
+                        <?php endif; ?>
                     </a>
                     <a href="peminjaman.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'peminjaman.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
                         <i class="fa-solid fa-arrow-right-arrow-left w-5 text-emerald-300"></i> Peminjaman Buku

@@ -37,6 +37,23 @@ require_once __DIR__ . '/includes/header.php';
     <p class="text-sm text-slate-500">Kondisi koleksi, anggota, dan sirkulasi buku Desa Sejiram secara real-time.</p>
 </div>
 
+<?php if ($pendingAnggotaCount > 0): ?>
+<div class="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-400">
+    <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center font-bold text-xl flex-shrink-0">
+            <i class="fa-solid fa-user-clock text-amber-100 animate-pulse"></i>
+        </div>
+        <div>
+            <h4 class="font-extrabold text-sm sm:text-base">Ada <?= $pendingAnggotaCount ?> Permohonan Anggota Baru Menunggu Verifikasi</h4>
+            <p class="text-xs text-amber-100">Masyarakat telah mendaftar melalui portal publik dan memerlukan persetujuan dari admin/petugas.</p>
+        </div>
+    </div>
+    <a href="anggota.php?status=Menunggu" class="bg-white text-orange-700 hover:bg-amber-50 px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap flex items-center gap-1.5 flex-shrink-0">
+        Tinjau Pendaftar <i class="fa-solid fa-arrow-right"></i>
+    </a>
+</div>
+<?php endif; ?>
+
 <!-- Grid 6 Kartu Metrik -->
 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">

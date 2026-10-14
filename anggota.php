@@ -18,7 +18,9 @@ $kategoriList = [
 
 $statusList = [
     'Aktif',
-    'Nonaktif'
+    'Nonaktif',
+    'Menunggu',
+    'Ditolak'
 ];
 
 // 1. Tambah Anggota Baru
@@ -103,7 +105,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_anggota'])) {
     }
 }
 
-// 3. Hapus Anggota
+// 3. Setujui Pendaftaran Anggota Baru
+if (isset($_GET['setujui'])) {
+    $idSetujui = (int)$_GET['setujui'];
+    try {
+        $stmtCek = $pdo->prepare("SELECT * FROM anggota WHERE id = ?");
+        $stmtCek->execute([$idSetujui]);
+        $ag = $stmtCek->fetch();
+
+        if (!$ag) {
+            $pesan = "Data permohonan anggota tidak ditemukan!";
+            $tipePesan = 'error';
+        } else {
+            // Jika nomor masih kode pendaftaran REG-..., terbitkan nomor resmi AGT-XXXX
+            $noResmi = $ag['no_anggota'];
+            if (str_starts_with($noResmi, 'REG-')) {
+                $noResmi = 'AGT-' . date('y') . str_pad((string)$idSetujui, 3, '0', STR_PAD_LEFT);
+                $stmtDup = $pdo->prepare("SELECT COUNT(*) FROM anggota WHERE no_anggota = ? AND id != ?");
+                $stmtDup->execute([$noResmi, $idSetujui]);
+                if ($stmtDup->fetchColumn() > 0) {
+                    $noResmi = 'AGT-' . date('ymd') . '-' . rand(100, 999);
+                }
+            }
+            $stmtUp = $pdo->prepare("UPDATE anggota SET status = 'Aktif', no_anggota = ? WHERE id = ?");
+            $stmtUp->execute([$noResmi, $idSetujui]);
+            $pesan = "Pendaftaran anggota '{$ag['nama']}' BERHASIL DISETUJUI dengan Nomor Anggota resmi: {$noResmi}.";
+            $tipePesan = 'success';
+        }
+    } catch (PDOException $e) {
+        $pesan = "Gagal menyetujui pendaftaran: " . $e->getMessage();
+        $tipePesan = 'error';
+    }
+}
+
+// 4. Tolak Pendaftaran Anggota
+if (isset($_GET['tolak'])) {
+    $idTolak = (int)$_GET['tolak'];
+    try {
+        $stmtCek = $pdo->prepare("SELECT nama, no_anggota FROM anggota WHERE id = ?");
+        $stmtCek->execute([$idTolak]);
+        $ag = $stmtCek->fetch();
+
+        if (!$ag) {
+            $pesan = "Data permohonan anggota tidak ditemukan!";
+            $tipePesan = 'error';
+        } else {
+            $stmtUp = $pdo->prepare("UPDATE anggota SET status = 'Ditolak' WHERE id = ?");
+            $stmtUp->execute([$idTolak]);
+            $pesan = "Permohonan pendaftaran anggota '{$ag['nama']}' ({$ag['no_anggota']}) telah DITOLAK.";
+            $tipePesan = 'error';
+        }
+    } catch (PDOException $e) {
+        $pesan = "Gagal menolak pendaftaran: " . $e->getMessage();
+        $tipePesan = 'error';
+    }
+}
+
+// 5. Hapus Anggota
 if (isset($_GET['hapus'])) {
     $idHapus = (int)$_GET['hapus'];
     try {
@@ -137,7 +195,14 @@ if (isset($_GET['hapus'])) {
     }
 }
 
-// 4. Filter & Pencarian
+// Hitung Jumlah Statistik Anggota untuk Tab Navigasi
+$countTotal = (int)$pdo->query("SELECT COUNT(*) FROM anggota")->fetchColumn();
+$countMenunggu = (int)$pdo->query("SELECT COUNT(*) FROM anggota WHERE status = 'Menunggu'")->fetchColumn();
+$countAktif = (int)$pdo->query("SELECT COUNT(*) FROM anggota WHERE status = 'Aktif'")->fetchColumn();
+$countDitolak = (int)$pdo->query("SELECT COUNT(*) FROM anggota WHERE status = 'Ditolak'")->fetchColumn();
+$countNonaktif = (int)$pdo->query("SELECT COUNT(*) FROM anggota WHERE status = 'Nonaktif'")->fetchColumn();
+
+// 6. Filter & Pencarian
 $katFilter = $_GET['kategori'] ?? '';
 $statusFilter = $_GET['status'] ?? '';
 $cari = trim($_GET['cari'] ?? '');
@@ -173,7 +238,7 @@ require_once __DIR__ . '/includes/header.php';
         <p class="text-sm text-slate-500">Pendaftaran pelajar SD, SMP, SMA, aparatur desa, dan warga umum Desa Sejiram.</p>
     </div>
     <button type="button" onclick="bukaModalTambah()" class="bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-emerald-800 flex items-center gap-2 shadow-sm transition">
-        <i class="fa-solid fa-user-plus"></i> Tambah Anggota
+        <i class="fa-solid fa-user-plus"></i> Tambah Anggota Manual
     </button>
 </div>
 
@@ -183,6 +248,33 @@ require_once __DIR__ . '/includes/header.php';
     <span class="text-sm font-medium"><?= e($pesan) ?></span>
 </div>
 <?php endif; ?>
+
+<!-- Tab Filter Status Cepat -->
+<div class="flex flex-wrap gap-2 mb-4">
+    <a href="anggota.php" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= ($statusFilter === '') ? 'bg-emerald-800 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' ?>">
+        <span>Semua Anggota</span>
+        <span class="bg-black/10 px-1.5 py-0.5 rounded-full text-[10px] font-mono"><?= $countTotal ?></span>
+    </a>
+    <a href="anggota.php?status=Menunggu" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= ($statusFilter === 'Menunggu') ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-amber-50 border border-slate-200' ?>">
+        <i class="fa-solid fa-clock text-amber-500 <?= ($statusFilter === 'Menunggu') ? 'text-white' : '' ?>"></i>
+        <span>Menunggu Persetujuan</span>
+        <?php if ($countMenunggu > 0): ?>
+            <span class="bg-rose-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-extrabold shadow-sm animate-pulse"><?= $countMenunggu ?></span>
+        <?php endif; ?>
+    </a>
+    <a href="anggota.php?status=Aktif" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= ($statusFilter === 'Aktif') ? 'bg-emerald-800 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' ?>">
+        <span>Anggota Aktif</span>
+        <span class="bg-black/10 px-1.5 py-0.5 rounded-full text-[10px] font-mono"><?= $countAktif ?></span>
+    </a>
+    <a href="anggota.php?status=Ditolak" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= ($statusFilter === 'Ditolak') ? 'bg-rose-700 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' ?>">
+        <span>Ditolak</span>
+        <span class="bg-black/10 px-1.5 py-0.5 rounded-full text-[10px] font-mono"><?= $countDitolak ?></span>
+    </a>
+    <a href="anggota.php?status=Nonaktif" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= ($statusFilter === 'Nonaktif') ? 'bg-slate-800 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' ?>">
+        <span>Nonaktif</span>
+        <span class="bg-black/10 px-1.5 py-0.5 rounded-full text-[10px] font-mono"><?= $countNonaktif ?></span>
+    </a>
+</div>
 
 <!-- Baris Filter & Cari -->
 <form method="GET" class="bg-white p-4 rounded-xl border border-slate-200 mb-6 flex flex-wrap gap-3 items-center shadow-sm">
@@ -227,8 +319,10 @@ require_once __DIR__ . '/includes/header.php';
                 <?php if (empty($daftarAnggota)): ?>
                 <tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada data anggota yang cocok.</td></tr>
                 <?php else: foreach ($daftarAnggota as $ag): ?>
-                <tr class="hover:bg-slate-50 transition">
-                    <td class="p-3 font-mono text-xs font-bold text-emerald-800"><?= e($ag['no_anggota']) ?></td>
+                <tr class="hover:bg-slate-50 transition <?= $ag['status'] === 'Menunggu' ? 'bg-amber-50/50' : '' ?>">
+                    <td class="p-3 font-mono text-xs font-bold <?= $ag['status'] === 'Menunggu' ? 'text-amber-800' : 'text-emerald-800' ?>">
+                        <?= e($ag['no_anggota']) ?>
+                    </td>
                     <td class="p-3 font-bold text-slate-800"><?= e($ag['nama']) ?></td>
                     <td class="p-3">
                         <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200"><?= e($ag['kategori_tingkat']) ?></span>
@@ -236,12 +330,36 @@ require_once __DIR__ . '/includes/header.php';
                     <td class="p-3 text-slate-600"><?= e($ag['institusi']) ?></td>
                     <td class="p-3 font-mono text-xs text-slate-600"><?= e($ag['kontak']) ?></td>
                     <td class="p-3 text-center">
-                        <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold <?= $ag['status'] === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' ?>">
-                            <?= e($ag['status']) ?>
-                        </span>
+                        <?php if ($ag['status'] === 'Aktif'): ?>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800">Aktif</span>
+                        <?php elseif ($ag['status'] === 'Menunggu'): ?>
+                            <span class="text-xs px-2.5 py-1 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-clock text-amber-600 animate-pulse"></i> Menunggu
+                            </span>
+                        <?php elseif ($ag['status'] === 'Ditolak'): ?>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-700 border border-rose-200">Ditolak</span>
+                        <?php else: ?>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-slate-200 text-slate-600">Nonaktif</span>
+                        <?php endif; ?>
                     </td>
                     <td class="p-3 text-center">
-                        <div class="flex items-center justify-center gap-1.5">
+                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                            <?php if ($ag['status'] === 'Menunggu'): ?>
+                                <!-- Tombol Setujui -->
+                                <a href="anggota.php?setujui=<?= $ag['id'] ?>" onclick="return confirm('Apakah Anda yakin ingin MENYETUJUI pendaftaran anggota \'<?= e(addslashes($ag['nama'])) ?>\'? Nomor anggota resmi akan diterbitkan.')" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1 shadow-sm transition" title="Setujui Pendaftaran">
+                                    <i class="fa-solid fa-check"></i> Setujui
+                                </a>
+                                <!-- Tombol Tolak -->
+                                <a href="anggota.php?tolak=<?= $ag['id'] ?>" onclick="return confirm('Apakah Anda yakin ingin MENOLAK permohonan pendaftaran anggota \'<?= e(addslashes($ag['nama'])) ?>\'?')" class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1 shadow-sm transition" title="Tolak Pendaftaran">
+                                    <i class="fa-solid fa-xmark"></i> Tolak
+                                </a>
+                            <?php elseif ($ag['status'] === 'Ditolak'): ?>
+                                <!-- Tombol Setujui Kembali -->
+                                <a href="anggota.php?setujui=<?= $ag['id'] ?>" onclick="return confirm('Setujui kembali pendaftaran anggota \'<?= e(addslashes($ag['nama'])) ?>\'?')" class="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 shadow-sm transition" title="Setujui Kembali">
+                                    <i class="fa-solid fa-rotate-left"></i> Setujui
+                                </a>
+                            <?php endif; ?>
+
                             <!-- Tombol Edit Anggota -->
                             <button type="button" onclick="bukaModalEdit(<?= htmlspecialchars(json_encode([
                                 'id' => (int)$ag['id'],

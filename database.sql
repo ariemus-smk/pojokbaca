@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `anggota` (
   `kategori_tingkat` ENUM('SD', 'SMP', 'SMA', 'Warga Umum', 'Aparatur Desa') NOT NULL,
   `institusi` VARCHAR(150) NOT NULL,
   `kontak` VARCHAR(30) NOT NULL,
-  `status` ENUM('Aktif', 'Nonaktif') NOT NULL DEFAULT 'Aktif',
+  `status` ENUM('Aktif', 'Nonaktif', 'Menunggu', 'Ditolak') NOT NULL DEFAULT 'Aktif',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

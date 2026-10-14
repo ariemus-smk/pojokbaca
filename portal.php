@@ -40,6 +40,108 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['kirim_presens
     }
 }
 
+// Registrasi Mandiri Anggota Baru dari Portal Publik
+$pesanRegistrasi = null;
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['daftar_anggota'])) {
+    $nama = trim($_POST['nama'] ?? '');
+    $kategori = trim($_POST['kategori_tingkat'] ?? 'Warga Umum');
+    $institusi = trim($_POST['institusi'] ?? '');
+    $kontak = trim($_POST['kontak'] ?? '');
+
+    $kategoriTingkatList = ['SD', 'SMP', 'SMA', 'Warga Umum', 'Aparatur Desa'];
+
+    if (empty($nama) || empty($institusi) || empty($kontak)) {
+        $pesanRegistrasi = [
+            'tipe' => 'error',
+            'judul' => 'Data Belum Lengkap',
+            'pesan' => 'Mohon lengkapi Nama Lengkap, Asal Dusun/Sekolah, dan Nomor WhatsApp/Kontak Anda!'
+        ];
+    } elseif (!in_array($kategori, $kategoriTingkatList, true)) {
+        $pesanRegistrasi = [
+            'tipe' => 'error',
+            'judul' => 'Kategori Tidak Valid',
+            'pesan' => 'Pilihan kategori/jenjang pemustaka tidak valid!'
+        ];
+    } else {
+        // Cek apakah nomor kontak sudah terdaftar sebelumnya
+        $stmtCek = $pdo->prepare("SELECT id, no_anggota, nama, status FROM anggota WHERE kontak = ?");
+        $stmtCek->execute([$kontak]);
+        $anggotaLama = $stmtCek->fetch();
+
+        if ($anggotaLama) {
+            if ($anggotaLama['status'] === 'Aktif') {
+                $pesanRegistrasi = [
+                    'tipe' => 'info',
+                    'judul' => 'Nomor Kontak Sudah Terdaftar Aktif',
+                    'pesan' => "Nomor kontak ({$kontak}) sudah terdaftar sebagai anggota aktif atas nama '{$anggotaLama['nama']}' dengan Nomor Anggota resmi: {$anggotaLama['no_anggota']}. Anda sudah dapat langsung meminjam buku di Pojok Baca."
+                ];
+            } elseif ($anggotaLama['status'] === 'Menunggu') {
+                $pesanRegistrasi = [
+                    'tipe' => 'warning',
+                    'judul' => 'Pendaftaran Sedang Menunggu Verifikasi',
+                    'no_reg' => $anggotaLama['no_anggota'],
+                    'nama' => $anggotaLama['nama'],
+                    'institusi' => $institusi,
+                    'kontak' => $kontak,
+                    'pesan' => "Pendaftaran atas nama '{$anggotaLama['nama']}' dengan kode registrasi ({$anggotaLama['no_anggota']}) sudah kami terima sebelumnya dan sedang dalam antrean verifikasi oleh petugas/admin perpustakaan desa."
+                ];
+            } else {
+                // Status Ditolak atau Nonaktif -> buatkan pendaftaran baru dengan status Menunggu
+                $kodeReg = 'REG-' . date('ymd') . '-' . rand(100, 999);
+                $stmtUp = $pdo->prepare("UPDATE anggota SET no_anggota = ?, nama = ?, kategori_tingkat = ?, institusi = ?, status = 'Menunggu', created_at = NOW() WHERE id = ?");
+                $stmtUp->execute([$kodeReg, $nama, $kategori, $institusi, $anggotaLama['id']]);
+                $pesanRegistrasi = [
+                    'tipe' => 'success',
+                    'judul' => 'Pendaftaran Berhasil Dikirim Ulang!',
+                    'no_reg' => $kodeReg,
+                    'nama' => $nama,
+                    'kategori' => $kategori,
+                    'institusi' => $institusi,
+                    'kontak' => $kontak,
+                    'pesan' => 'Permohonan pendaftaran anggota baru Anda berhasil diperbarui dan dikirim. Petugas/admin desa akan segera meninjau dan menerbitkan nomor anggota resmi Anda.'
+                ];
+            }
+        } else {
+            // Generate kode pendaftaran sementara yang unik: REG-YYMMDD-XXX
+            $kodeReg = '';
+            for ($i = 0; $i < 5; $i++) {
+                $candidate = 'REG-' . date('ymd') . '-' . rand(100, 999);
+                $stmtUniq = $pdo->prepare("SELECT COUNT(*) FROM anggota WHERE no_anggota = ?");
+                $stmtUniq->execute([$candidate]);
+                if ((int)$stmtUniq->fetchColumn() === 0) {
+                    $kodeReg = $candidate;
+                    break;
+                }
+            }
+            if (empty($kodeReg)) {
+                $kodeReg = 'REG-' . date('ymd') . '-' . (time() % 10000);
+            }
+
+            try {
+                $stmtIns = $pdo->prepare("INSERT INTO anggota (no_anggota, nama, kategori_tingkat, institusi, kontak, status, created_at) VALUES (?, ?, ?, ?, ?, 'Menunggu', NOW())");
+                $stmtIns->execute([$kodeReg, $nama, $kategori, $institusi, $kontak]);
+
+                $pesanRegistrasi = [
+                    'tipe' => 'success',
+                    'judul' => 'Pendaftaran Anggota Berhasil Dikirim!',
+                    'no_reg' => $kodeReg,
+                    'nama' => $nama,
+                    'kategori' => $kategori,
+                    'institusi' => $institusi,
+                    'kontak' => $kontak,
+                    'pesan' => 'Permohonan pendaftaran anggota baru Anda berhasil dicatat ke sistem. Petugas/admin perpustakaan desa akan segera memverifikasi dan menyetujui pendaftaran Anda.'
+                ];
+            } catch (PDOException $e) {
+                $pesanRegistrasi = [
+                    'tipe' => 'error',
+                    'judul' => 'Gagal Mengirim Pendaftaran',
+                    'pesan' => 'Terjadi kesalahan sistem saat menyimpan data: ' . $e->getMessage()
+                ];
+            }
+        }
+    }
+}
+
 // Statistik Singkat
 $totalJudul = $pdo->query("SELECT COUNT(*) FROM buku")->fetchColumn();
 $totalStok = $pdo->query("SELECT COALESCE(SUM(stok_total), 0) FROM buku")->fetchColumn();
@@ -132,17 +234,23 @@ $kategoriBukuList = [
                     </div>
                 </a>
 
-                <nav class="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
+                <nav class="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-semibold text-slate-600">
                     <a href="#beranda" class="hover:text-emerald-700 transition">Beranda</a>
                     <a href="#katalog" class="hover:text-emerald-700 transition">Katalog Buku</a>
+                    <a href="#daftar-anggota" class="hover:text-emerald-700 text-emerald-700 font-bold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-id-card text-emerald-600"></i> Daftar Anggota
+                    </a>
                     <a href="#artikel" class="hover:text-emerald-700 transition">Artikel & Literasi</a>
                     <a href="#galeri" class="hover:text-emerald-700 transition">Galeri & PKK</a>
                     <a href="#buku-tamu" class="hover:text-emerald-700 transition">Buku Tamu</a>
                     <a href="#kontak" class="hover:text-emerald-700 transition">Kontak</a>
                 </nav>
 
-                <div class="md:hidden">
-                    <a href="#katalog" class="text-xs bg-emerald-700 text-white px-3 py-2 rounded-lg font-semibold">Cari Buku</a>
+                <div class="flex items-center gap-2">
+                    <a href="#daftar-anggota" class="hidden sm:inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm transition">
+                        <i class="fa-solid fa-user-plus"></i> Gabung Anggota
+                    </a>
+                    <a href="#katalog" class="md:hidden text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg font-semibold">Cari Buku</a>
                 </div>
             </div>
         </div>
@@ -193,6 +301,14 @@ $kategoriBukuList = [
                             Cari Buku
                         </button>
                     </form>
+
+                    <!-- CTA Registrasi Anggota Cepat -->
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        <a href="#daftar-anggota" class="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+                            <i class="fa-solid fa-id-card text-amber-900"></i> Daftar Anggota Pemustaka Gratis
+                        </a>
+                        <span class="text-xs text-emerald-200 hidden sm:inline"><i class="fa-solid fa-check-circle text-emerald-300 mr-1"></i>Pinjam buku pulang & gratis seumur hidup</span>
+                    </div>
 
                     <!-- Angka Statistik Mini -->
                     <div class="grid grid-cols-3 gap-4 pt-4 border-t border-emerald-700/60 max-w-lg">
@@ -479,6 +595,281 @@ $kategoriBukuList = [
         </div>
     </section>
 
+    <!-- ================= SECTION REGISTRASI ANGGOTA MANDIRI ================= -->
+    <section id="daftar-anggota" class="py-16 sm:py-20 bg-slate-50 border-b border-slate-200 relative overflow-hidden">
+        <!-- Dekorasi Background Lembut -->
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-emerald-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-teal-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            
+            <!-- Judul Section -->
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 border border-emerald-200 px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-address-card text-emerald-600"></i> Keanggotaan Pemustaka Mandiri
+                </span>
+                <h2 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 mt-3 tracking-tight">
+                    Daftar Menjadi Anggota Perpustakaan
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                    Daftarkan diri Anda atau putra-putri Anda secara online. Dapatkan akses bebas meminjam ratusan koleksi buku bacaan, edukasi, dan pemberdayaan masyarakat Desa Sejiram secara gratis!
+                </p>
+            </div>
+
+            <!-- Kartu Notifikasi Hasil Pendaftaran -->
+            <?php if ($pesanRegistrasi): ?>
+                <?php if ($pesanRegistrasi['tipe'] === 'success'): ?>
+                <div class="mb-12 bg-white border-2 border-emerald-500 rounded-3xl p-6 sm:p-8 shadow-xl max-w-3xl mx-auto relative overflow-hidden animate-fadeIn">
+                    <div class="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] uppercase font-black px-4 py-1 rounded-bl-xl tracking-wider">
+                        Permohonan Baru
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+                        <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-3xl shadow-lg flex-shrink-0">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div class="flex-1 space-y-3">
+                            <span class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
+                                <i class="fa-solid fa-paper-plane text-emerald-600"></i> Pendaftaran Terkirim
+                            </span>
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                                Terima Kasih, <?= e($pesanRegistrasi['nama']) ?>!
+                            </h3>
+                            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                                <?= e($pesanRegistrasi['pesan']) ?>
+                            </p>
+
+                            <!-- Kotak Kode Registrasi Sementara -->
+                            <div class="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 mt-2">
+                                <div class="text-center sm:text-left">
+                                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kode Registrasi Sementara Anda</p>
+                                    <p class="text-2xl font-black font-mono text-emerald-800 tracking-wider mt-0.5" id="teksKodeReg"><?= e($pesanRegistrasi['no_reg']) ?></p>
+                                </div>
+                                <div class="flex flex-wrap items-center justify-center gap-2">
+                                    <button type="button" onclick="salinKodeReg('<?= e($pesanRegistrasi['no_reg']) ?>')" id="btnSalinReg" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-1.5">
+                                        <i class="fa-regular fa-copy"></i> Salin Kode
+                                    </button>
+                                    <span class="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5">
+                                        <i class="fa-solid fa-clock-rotate-left animate-spin text-amber-700"></i> Menunggu Persetujuan Admin
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+                                <span><i class="fa-solid fa-graduation-cap text-emerald-600 mr-1"></i> Jenjang: <strong><?= e($pesanRegistrasi['kategori']) ?></strong></span>
+                                <span><i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i> Asal: <strong><?= e($pesanRegistrasi['institusi']) ?></strong></span>
+                                <span><i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i> WhatsApp: <strong><?= e($pesanRegistrasi['kontak']) ?></strong></span>
+                            </div>
+
+                            <p class="text-[11px] text-slate-400 italic">
+                                * Simpan kode di atas atau tunjukkan nomor kontak Anda saat berkunjung ke Pojok Baca Pa'edah Desa Sejiram.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="mb-10 max-w-2xl mx-auto p-4 rounded-2xl flex items-start gap-3.5 <?= $pesanRegistrasi['tipe'] === 'error' ? 'bg-rose-50 border border-rose-300 text-rose-900' : ($pesanRegistrasi['tipe'] === 'warning' ? 'bg-amber-50 border border-amber-300 text-amber-900' : 'bg-sky-50 border border-sky-300 text-sky-900') ?>">
+                    <div class="text-xl flex-shrink-0 mt-0.5">
+                        <i class="fa-solid <?= $pesanRegistrasi['tipe'] === 'error' ? 'fa-circle-xmark text-rose-600' : ($pesanRegistrasi['tipe'] === 'warning' ? 'fa-triangle-exclamation text-amber-600' : 'fa-circle-info text-sky-600') ?>"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-sm"><?= e($pesanRegistrasi['judul']) ?></h4>
+                        <p class="text-xs mt-1 leading-relaxed"><?= e($pesanRegistrasi['pesan']) ?></p>
+                        <?php if (!empty($pesanRegistrasi['no_reg'])): ?>
+                        <p class="text-xs font-mono font-bold mt-2 bg-white/60 px-2.5 py-1 rounded inline-block">
+                            Kode: <?= e($pesanRegistrasi['no_reg']) ?>
+                        </p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- Konten 2 Kolom: Alur & Keuntungan vs Formulir Registrasi -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+                
+                <!-- Kolom Kiri: Manfaat & Alur Verifikasi -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6">
+                        <div class="border-b border-slate-100 pb-4">
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-1">Kenapa Harus Jadi Anggota?</span>
+                            <h3 class="text-lg sm:text-xl font-bold text-slate-900">Keuntungan Menjadi Pemustaka Resmi</h3>
+                        </div>
+
+                        <ul class="space-y-4 text-xs sm:text-sm text-slate-600">
+                            <li class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                                    <i class="fa-solid fa-book-bookmark"></i>
+                                </div>
+                                <div>
+                                    <strong class="text-slate-900 block font-bold">Peminjaman Buku Pulang Gratis</strong>
+                                    <span>Bisa meminjam hingga <?= (int)$setting['durasi_pinjam_hari'] ?> hari untuk dibaca santai bersama keluarga di rumah.</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                                    <i class="fa-solid fa-children"></i>
+                                </div>
+                                <div>
+                                    <strong class="text-slate-900 block font-bold">Ramah Anak & Bimbingan Belajar</strong>
+                                    <span>Koleksi dongeng anak bergambar, buku tema sekolah SD, SMP, SMA, dan ruang baca santai.</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                                    <i class="fa-solid fa-seedling"></i>
+                                </div>
+                                <div>
+                                    <strong class="text-slate-900 block font-bold">Edukasi Tani Jeruk & TP-PKK</strong>
+                                    <span>Tersedia buku budidaya pertanian khas Sambas, kuliner, kesehatan, dan keterampilan ibu rumah tangga.</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                                    <i class="fa-solid fa-id-card"></i>
+                                </div>
+                                <div>
+                                    <strong class="text-slate-900 block font-bold">Nomor Anggota Resmi Terdata</strong>
+                                    <span>Terdaftar di sistem komputerisasi perpustakaan Desa Sejiram secara resmi dan tanpa biaya apapun.</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Alur Proses Pendaftaran -->
+                    <div class="bg-gradient-to-br from-slate-900 to-emerald-950 text-white rounded-3xl p-6 sm:p-7 shadow-lg">
+                        <h4 class="text-sm font-extrabold uppercase tracking-wider text-emerald-400 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check"></i> Alur Persetujuan Keanggotaan
+                        </h4>
+                        <div class="space-y-4 text-xs text-slate-300">
+                            <div class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">1</span>
+                                <div>
+                                    <strong class="text-white block">Kirim Formulir Online</strong>
+                                    <span>Masyarakat mengisi identitas diri dan mendapatkan kode pendaftaran sementara.</span>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">2</span>
+                                <div>
+                                    <strong class="text-white block">Pemeriksaan oleh Admin / Petugas</strong>
+                                    <span>Admin akan melihat notifikasi pendaftar baru dan melakukan verifikasi data (Setujui / Tolak).</span>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">3</span>
+                                <div>
+                                    <strong class="text-white block">Penerbitan Nomor Anggota Resmi</strong>
+                                    <span>Setelah disetujui, nomor anggota resmi (format AGT-XXXX) aktif dan siap digunakan untuk meminjam buku.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Formulir Registrasi Mandiri -->
+                <div class="lg:col-span-7">
+                    <div class="bg-white rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200/90 shadow-xl relative">
+                        <div class="mb-6">
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900">Formulir Pendaftaran Pemustaka</h3>
+                            <p class="text-xs sm:text-sm text-slate-500 mt-1">Lengkapi data diri Anda di bawah ini dengan benar.</p>
+                        </div>
+
+                        <form method="POST" action="#daftar-anggota" class="space-y-5">
+                            <input type="hidden" name="daftar_anggota" value="1">
+
+                            <!-- Nama Lengkap -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Nama Lengkap <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-user"></i>
+                                    </span>
+                                    <input type="text" 
+                                           name="nama" 
+                                           required 
+                                           placeholder="Nama lengkap sesuai KTP / Kartu Pelajar..." 
+                                           class="w-full text-slate-800 text-sm pl-10 pr-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition shadow-sm bg-slate-50/50">
+                                </div>
+                            </div>
+
+                            <!-- Jenjang / Kategori -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                        Kategori / Jenjang <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                            <i class="fa-solid fa-graduation-cap"></i>
+                                        </span>
+                                        <select name="kategori_tingkat" required class="w-full text-slate-800 text-sm pl-10 pr-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition shadow-sm bg-slate-50/50">
+                                            <option value="SD">Pelajar SD / MI</option>
+                                            <option value="SMP">Pelajar SMP / MTs</option>
+                                            <option value="SMA">Pelajar SMA / SMK / MA</option>
+                                            <option value="Warga Umum" selected>Warga Umum / TP-PKK</option>
+                                            <option value="Aparatur Desa">Aparatur Desa / RT / Dusun</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Kontak WhatsApp -->
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                        No. WhatsApp / HP <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                                            <i class="fa-brands fa-whatsapp font-bold text-base"></i>
+                                        </span>
+                                        <input type="tel" 
+                                               name="kontak" 
+                                               required 
+                                               placeholder="Contoh: 081234567890" 
+                                               class="w-full text-slate-800 text-sm pl-10 pr-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition shadow-sm bg-slate-50/50">
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 mt-1 block">Untuk konfirmasi & pengingat pinjaman buku.</span>
+                                </div>
+                            </div>
+
+                            <!-- Asal Sekolah / Dusun -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Asal Sekolah / Alamat Dusun <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-house-chimney"></i>
+                                    </span>
+                                    <input type="text" 
+                                           name="institusi" 
+                                           required 
+                                           placeholder="Contoh: Dusun Sejiram / RT 04 / SDN 01 Sejiram..." 
+                                           class="w-full text-slate-800 text-sm pl-10 pr-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition shadow-sm bg-slate-50/50">
+                                </div>
+                            </div>
+
+                            <!-- Tombol Kirim Pendaftaran -->
+                            <div class="pt-2">
+                                <button type="submit" class="w-full bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white font-extrabold text-sm uppercase tracking-wider py-4 rounded-xl transition duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transform active:scale-[0.99]">
+                                    <i class="fa-solid fa-paper-plane"></i> Kirim Pendaftaran Anggota
+                                </button>
+                            </div>
+
+                            <!-- Jaminan Keamanan -->
+                            <div class="pt-2 flex items-center justify-center gap-2 text-center text-[11px] text-slate-500">
+                                <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                                <span>Pendaftaran 100% Gratis &bull; Data aman hanya untuk arsip Pojok Baca Desa Sejiram.</span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
     <!-- Section Presensi Kunjungan Mandiri (Buku Tamu Digital) -->
     <section id="buku-tamu" class="py-16 bg-gradient-to-br from-emerald-800 to-teal-900 border-b border-slate-200">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -554,6 +945,7 @@ $kategoriBukuList = [
                     <h5 class="font-bold text-white text-xs uppercase tracking-wider mb-3">Tautan Cepat</h5>
                     <ul class="space-y-2 text-xs">
                         <li><a href="#katalog" class="hover:text-white transition">Katalog 7 Kategori Buku</a></li>
+                        <li><a href="#daftar-anggota" class="hover:text-white text-emerald-400 font-semibold transition flex items-center gap-1.5"><i class="fa-solid fa-id-card text-[11px]"></i> Daftar Anggota Baru</a></li>
                         <li><a href="#artikel" class="hover:text-white transition">Artikel Literasi & Warta Desa</a></li>
                         <li><a href="#galeri" class="hover:text-white transition">Dokumentasi Kegiatan & PKK</a></li>
                         <li><a href="#buku-tamu" class="hover:text-white transition">Isi Presensi Pemustaka</a></li>
@@ -1069,6 +1461,24 @@ $kategoriBukuList = [
             modal.classList.add('hidden');
             document.body.classList.remove('overflow-hidden');
         }
+    }
+
+    function salinKodeReg(kode) {
+        if (!kode) return;
+        navigator.clipboard.writeText(kode).then(() => {
+            const btn = document.getElementById('btnSalinReg');
+            if (btn) {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check text-emerald-300"></i> Tersalin!';
+                btn.classList.add('bg-emerald-900');
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('bg-emerald-900');
+                }, 2000);
+            }
+        }).catch(err => {
+            alert('Kode pendaftaran Anda: ' + kode);
+        });
     }
 
     // Tutup modal ketika tombol Escape ditekan atau klik backdrop
