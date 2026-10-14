@@ -14,7 +14,7 @@ $appSetting = $stmtSetting->fetch() ?: [
     'durasi_pinjam_hari' => 7,
     'denda_per_hari' => 1000,
     'jabatan_kades' => 'Kepala Desa Sejiram',
-    'nama_kades' => '',
+    'nama_kades' => 'Hemdi',
     'nama_pengelola' => 'Pengelola Pojok Baca'
 ];
 $currentPage = basename($_SERVER['PHP_SELF']);
@@ -82,9 +82,40 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <a href="artikel.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'artikel.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
                         <i class="fa-solid fa-newspaper w-5 text-emerald-300"></i> Kelola Artikel & Berita
                     </a>
-                    <a href="laporan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'laporan.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
-                        <i class="fa-solid fa-file-pdf w-5 text-emerald-300"></i> Cetak Laporan
-                    </a>
+                    <!-- Menu Laporan & 6 Sub-menu -->
+                    <?php 
+                    $isLaporan = ($currentPage === 'laporan.php');
+                    $activeJenis = $_GET['jenis'] ?? ($isLaporan ? 'peminjaman' : '');
+                    ?>
+                    <div>
+                        <button type="button" onclick="toggleMenuLaporan()" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition <?= $isLaporan ? 'bg-emerald-900/90 text-white font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-file-invoice w-5 text-emerald-300"></i>
+                                <span>Laporan</span>
+                            </div>
+                            <i id="chevron-laporan" class="fa-solid fa-chevron-down text-xs transition-transform duration-200 <?= $isLaporan ? 'rotate-180' : '' ?>"></i>
+                        </button>
+                        <div id="submenu-laporan" class="pl-4 pr-1 pt-1 space-y-1 text-xs <?= $isLaporan ? '' : 'hidden' ?>">
+                            <a href="laporan.php?jenis=buku" class="flex items-center gap-2.5 px-3 py-2 rounded-lg transition <?= ($isLaporan && $activeJenis === 'buku') ? 'bg-emerald-950 text-white font-bold shadow-inner' : 'hover:bg-emerald-700/80 text-emerald-100' ?>">
+                                <i class="fa-solid fa-book text-[11px] text-emerald-300 w-4"></i> Laporan Koleksi Buku
+                            </a>
+                            <a href="laporan.php?jenis=anggota" class="flex items-center gap-2.5 px-3 py-2 rounded-lg transition <?= ($isLaporan && $activeJenis === 'anggota') ? 'bg-emerald-950 text-white font-bold shadow-inner' : 'hover:bg-emerald-700/80 text-emerald-100' ?>">
+                                <i class="fa-solid fa-users text-[11px] text-emerald-300 w-4"></i> Laporan Anggota
+                            </a>
+                            <a href="laporan.php?jenis=peminjaman" class="flex items-center gap-2.5 px-3 py-2 rounded-lg transition <?= ($isLaporan && $activeJenis === 'peminjaman') ? 'bg-emerald-950 text-white font-bold shadow-inner' : 'hover:bg-emerald-700/80 text-emerald-100' ?>">
+                                <i class="fa-solid fa-arrow-right-arrow-left text-[11px] text-emerald-300 w-4"></i> Laporan Peminjaman
+                            </a>
+                            <a href="laporan.php?jenis=denda" class="flex items-center gap-2.5 px-3 py-2 rounded-lg transition <?= ($isLaporan && $activeJenis === 'denda') ? 'bg-emerald-950 text-white font-bold shadow-inner' : 'hover:bg-emerald-700/80 text-emerald-100' ?>">
+                                <i class="fa-solid fa-receipt text-[11px] text-emerald-300 w-4"></i> Laporan Denda
+                            </a>
+                            <a href="laporan.php?jenis=inventaris" class="flex items-center gap-2.5 px-3 py-2 rounded-lg transition <?= ($isLaporan && $activeJenis === 'inventaris') ? 'bg-emerald-950 text-white font-bold shadow-inner' : 'hover:bg-emerald-700/80 text-emerald-100' ?>">
+                                <i class="fa-solid fa-boxes-stacked text-[11px] text-emerald-300 w-4"></i> Laporan Inventaris
+                            </a>
+                            <a href="laporan.php?jenis=presensi" class="flex items-center gap-2.5 px-3 py-2 rounded-lg transition <?= ($isLaporan && $activeJenis === 'presensi') ? 'bg-emerald-950 text-white font-bold shadow-inner' : 'hover:bg-emerald-700/80 text-emerald-100' ?>">
+                                <i class="fa-solid fa-clipboard-user text-[11px] text-emerald-300 w-4"></i> Laporan Presensi Tamu
+                            </a>
+                        </div>
+                    </div>
                     <?php if (($_SESSION['user_role'] ?? '') === 'admin'): ?>
                     <a href="pengguna.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'pengguna.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
                         <i class="fa-solid fa-users-gear w-5 text-emerald-300"></i> Manajemen Pengguna
@@ -121,6 +152,17 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </a>
             </div>
         </aside>
+
+        <script>
+        function toggleMenuLaporan() {
+            const sub = document.getElementById('submenu-laporan');
+            const chev = document.getElementById('chevron-laporan');
+            if (sub) {
+                sub.classList.toggle('hidden');
+                if (chev) chev.classList.toggle('rotate-180');
+            }
+        }
+        </script>
 
         <!-- Main Workspace -->
         <main class="flex-1 p-6 md:p-8 overflow-x-hidden">
