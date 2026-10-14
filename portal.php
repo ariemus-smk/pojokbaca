@@ -8,7 +8,8 @@ require_once __DIR__ . '/config/database.php';
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 80) == 443) ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$baseUrl = $protocol . $host;
+$baseDir = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/\\');
+$baseUrl = $protocol . $host . $baseDir;
 $likedArticlesSession = $_SESSION['liked_articles'] ?? [];
 
 // Pengaturan Instansi Desa
@@ -25,7 +26,7 @@ $setting = $stmtSetting->fetch() ?: [
 
 // Presensi Mandiri Pemustaka dari Publik
 $pesanPresensi = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kirim_presensi'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['kirim_presensi'])) {
     $nama = trim($_POST['nama'] ?? '');
     $kategori = $_POST['kategori_pemustaka'] ?? 'Warga Umum';
     $institusi = trim($_POST['asal_institusi'] ?? '');
@@ -370,12 +371,12 @@ $kategoriBukuList = [
                                 <i class="<?= $isArtLiked ? 'fa-solid' : 'fa-regular' ?> fa-heart text-rose-500 text-xs" id="portalLikeIcon_<?= $art['id'] ?>"></i>
                                 <span id="portalLikeCount_<?= $art['id'] ?>" class="text-xs"><?= (int)($art['likes'] ?? 0) ?></span>
                             </button>
-                            <button type="button" onclick="bukaModalSharePortal(event, <?= htmlspecialchars(json_encode([
-                                'id' => $art['id'],
-                                'judul' => $art['judul'],
-                                'kategori' => $art['kategori'],
-                                'url' => $artUrl
-                            ]), ENT_QUOTES, 'UTF-8') ?>)" 
+                            <button type="button" 
+                                    onclick="bukaModalSharePortal(event, this)" 
+                                    data-id="<?= (int)$art['id'] ?>"
+                                    data-judul="<?= e($art['judul']) ?>"
+                                    data-kategori="<?= e($art['kategori']) ?>"
+                                    data-url="<?= e($artUrl) ?>"
                                     class="w-7 h-7 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 flex items-center justify-center transition" 
                                     title="Bagikan artikel ini">
                                 <i class="fa-solid fa-share-nodes text-xs"></i>
@@ -589,55 +590,6 @@ $kategoriBukuList = [
         </div>
     </div>
 
-    <script>
-    function bukaModalGaleri(el) {
-        const modal = document.getElementById('modalGaleri');
-        const img = document.getElementById('modalGaleriImg');
-        const noImg = document.getElementById('modalGaleriNoImg');
-        const kategori = document.getElementById('modalGaleriKategori');
-        const tanggalText = document.getElementById('modalGaleriTanggal').querySelector('span');
-        const judul = document.getElementById('modalGaleriJudul');
-        const ket = document.getElementById('modalGaleriKeterangan');
-        const ketWrapper = document.getElementById('modalGaleriKetWrapper');
-
-        const foto = el.getAttribute('data-foto') || '';
-        const kat = el.getAttribute('data-kategori') || 'Kegiatan';
-        const jdl = el.getAttribute('data-judul') || '';
-        const tgl = el.getAttribute('data-tanggal') || '';
-        const keterangan = el.getAttribute('data-keterangan') || '';
-
-        if (foto) {
-            img.src = foto;
-            img.alt = jdl;
-            img.classList.remove('hidden');
-            noImg.classList.add('hidden');
-        } else {
-            img.src = '';
-            img.classList.add('hidden');
-            noImg.classList.remove('hidden');
-        }
-
-        kategori.textContent = kat;
-        if (kat === 'Kegiatan PKK') {
-            kategori.className = 'text-xs font-bold px-3 py-1 rounded-full shadow-sm bg-rose-600 text-white';
-        } else {
-            kategori.className = 'text-xs font-bold px-3 py-1 rounded-full shadow-sm bg-emerald-700 text-white';
-        }
-
-        tanggalText.textContent = tgl;
-        judul.textContent = jdl;
-
-        if (keterangan.trim() !== '') {
-            ket.textContent = keterangan;
-            ketWrapper.classList.remove('hidden');
-        } else {
-            ketWrapper.classList.add('hidden');
-        }
-
-        modal.classList.remove('hidden');
-        document.body.classList.add('overflow-hidden');
-    }
-
     <!-- ================= MODAL BAGIKAN ARTIKEL (PORTAL) ================= -->
     <div id="modalSharePortal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-fadeIn my-auto">
@@ -761,6 +713,7 @@ $kategoriBukuList = [
     }
 
     // Fungsi Like & Share Portal
+    let toastTimeoutPortal = null;
     function showToastPortal(msg, isSuccess = true) {
         const toast = document.getElementById('toastPortal');
         const toastMsg = document.getElementById('toastPortalMsg');
@@ -772,7 +725,8 @@ $kategoriBukuList = [
         toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
         toast.classList.add('translate-y-0', 'opacity-100');
 
-        setTimeout(() => {
+        if (toastTimeoutPortal) clearTimeout(toastTimeoutPortal);
+        toastTimeoutPortal = setTimeout(() => {
             toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
             toast.classList.remove('translate-y-0', 'opacity-100');
         }, 3000);
@@ -784,6 +738,8 @@ $kategoriBukuList = [
         const icon = document.getElementById('portalLikeIcon_' + artikelId);
         const count = document.getElementById('portalLikeCount_' + artikelId);
 
+        if (btn) btn.disabled = true;
+
         fetch('like_artikel.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -792,15 +748,17 @@ $kategoriBukuList = [
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                count.textContent = data.likes;
-                if (data.liked) {
-                    btn.className = "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition bg-rose-50 text-rose-600 font-bold";
-                    icon.className = "fa-solid fa-heart text-rose-500 text-xs";
-                    showToastPortal(data.message, true);
-                } else {
-                    btn.className = "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition text-slate-500 hover:text-rose-600 hover:bg-rose-50";
-                    icon.className = "fa-regular fa-heart text-rose-500 text-xs";
-                    showToastPortal(data.message, false);
+                if (count) count.textContent = data.likes;
+                if (btn && icon) {
+                    if (data.liked) {
+                        btn.className = "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition bg-rose-50 text-rose-600 font-bold";
+                        icon.className = "fa-solid fa-heart text-rose-500 text-xs";
+                        showToastPortal(data.message, true);
+                    } else {
+                        btn.className = "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition text-slate-500 hover:text-rose-600 hover:bg-rose-50";
+                        icon.className = "fa-regular fa-heart text-rose-500 text-xs";
+                        showToastPortal(data.message, false);
+                    }
                 }
             } else {
                 showToastPortal(data.message || 'Gagal memproses suka.', false);
@@ -808,13 +766,25 @@ $kategoriBukuList = [
         })
         .catch(() => {
             showToastPortal('Gagal menghubungi server.', false);
+        })
+        .finally(() => {
+            if (btn) btn.disabled = false;
         });
     }
 
     let activeShareArt = null;
 
-    function bukaModalSharePortal(event, art) {
+    function bukaModalSharePortal(event, target) {
         if (event) event.stopPropagation();
+        let art = target;
+        if (target instanceof HTMLElement) {
+            art = {
+                id: target.getAttribute('data-id'),
+                judul: target.getAttribute('data-judul') || '',
+                kategori: target.getAttribute('data-kategori') || 'Artikel',
+                url: target.getAttribute('data-url') || ''
+            };
+        }
         activeShareArt = art;
 
         document.getElementById('shareModalKat').textContent = art.kategori || 'Artikel';
