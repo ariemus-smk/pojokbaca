@@ -14,12 +14,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_pengaturan']))
     $jamOperasional = trim($_POST['jam_operasional'] ?? '08.00 - 15.30 WIB');
     $durasi = (int)$_POST['durasi_pinjam_hari'];
     $denda = (int)$_POST['denda_per_hari'];
-    $kades = trim($_POST['nama_kades']);
+    $jabatanKades = trim($_POST['jabatan_kades'] ?? 'Kepala Desa Sejiram');
+    $kades = trim($_POST['nama_kades'] ?? '');
     $pengelola = trim($_POST['nama_pengelola']);
 
-    $stmt = $pdo->prepare("UPDATE pengaturan SET nama_instansi=?, desa=?, kabupaten=?, alamat=?, jam_operasional=?, durasi_pinjam_hari=?, denda_per_hari=?, nama_kades=?, nama_pengelola=? WHERE id=1");
-    $stmt->execute([$namaInstansi, $desa, $kabupaten, $alamat, $jamOperasional, $durasi, $denda, $kades, $pengelola]);
+    $stmt = $pdo->prepare("UPDATE pengaturan SET nama_instansi=?, desa=?, kabupaten=?, alamat=?, jam_operasional=?, durasi_pinjam_hari=?, denda_per_hari=?, jabatan_kades=?, nama_kades=?, nama_pengelola=? WHERE id=1");
+    $stmt->execute([$namaInstansi, $desa, $kabupaten, $alamat, $jamOperasional, $durasi, $denda, $jabatanKades, $kades, $pengelola]);
     $pesan = "Konfigurasi instansi dan aturan peminjaman berhasil diperbarui.";
+}
+
+// Pastikan kolom jabatan_kades tersedia jika migrasi belum berjalan
+try {
+    $colCheck = $pdo->query("SHOW COLUMNS FROM pengaturan LIKE 'jabatan_kades'")->fetch();
+    if (!$colCheck) {
+        $pdo->exec("ALTER TABLE pengaturan ADD COLUMN jabatan_kades VARCHAR(100) NOT NULL DEFAULT 'Kepala Desa Sejiram' AFTER denda_per_hari");
+    }
+} catch (Throwable $e) {
+    // Abaikan jika sudah ada atau keterbatasan hak akses
 }
 
 $setting = $pdo->query("SELECT * FROM pengaturan LIMIT 1")->fetch();
@@ -81,14 +92,27 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
             <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Nama Kepala Desa (Penandatangan)</label>
-                <input type="text" name="nama_kades" required value="<?= e($setting['nama_kades']) ?>" class="w-full border rounded-lg p-2 text-sm">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Pejabat Pengesah & Penandatangan Dokumen / Laporan</h3>
+                <p class="text-[11px] text-slate-500">Data ini akan dicantumkan secara otomatis pada bagian tanda tangan lembar laporan rekapitulasi sirkulasi resmi.</p>
             </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Nama Koordinator Pengelola</label>
-                <input type="text" name="nama_pengelola" required value="<?= e($setting['nama_pengelola']) ?>" class="w-full border rounded-lg p-2 text-sm">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan Penandatangan (Kades)</label>
+                    <input type="text" name="jabatan_kades" required value="<?= e(!empty($setting['jabatan_kades']) ? $setting['jabatan_kades'] : 'Kepala Desa ' . preg_replace('/^Desa\s+/i', '', $setting['desa'])) ?>" placeholder="Contoh: Kepala Desa Sejiram" class="w-full border rounded-lg p-2 text-sm bg-white">
+                    <span class="text-[11px] text-slate-500">Jabatan pengesah pihak desa</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama Kepala Desa</label>
+                    <input type="text" name="nama_kades" value="<?= e($setting['nama_kades'] !== 'Kepala Desa Sejiram' ? $setting['nama_kades'] : '') ?>" placeholder="Nama lengkap & gelar Kades" class="w-full border rounded-lg p-2 text-sm bg-white">
+                    <span class="text-[11px] text-slate-500">Nama tercetak di tanda tangan laporan</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama Koordinator Pengelola</label>
+                    <input type="text" name="nama_pengelola" required value="<?= e($setting['nama_pengelola']) ?>" placeholder="Nama koordinator pengelola" class="w-full border rounded-lg p-2 text-sm bg-white">
+                    <span class="text-[11px] text-slate-500">Penandatangan pengelola teknis</span>
+                </div>
             </div>
         </div>
 

@@ -44,7 +44,24 @@ $stmtLap = $pdo->prepare("
 $stmtLap->execute([$bulan, $tahun]);
 $dataLaporan = $stmtLap->fetchAll();
 
-$aturan = $pdo->query("SELECT * FROM pengaturan LIMIT 1")->fetch();
+$aturan = $pdo->query("SELECT * FROM pengaturan LIMIT 1")->fetch() ?: [
+    'nama_instansi' => 'Pojok Baca Pa\'edah',
+    'desa' => 'Desa Sejiram',
+    'kabupaten' => 'Kabupaten Sambas',
+    'alamat' => 'Jl. Pendidikan No. 01, Kantor Desa Sejiram',
+    'jabatan_kades' => 'Kepala Desa Sejiram',
+    'nama_kades' => '',
+    'nama_pengelola' => 'Syarif Ahmad, S.Pd'
+];
+
+$namaBulanIndo = [
+    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
+    7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+];
+$tglCetak = date('d') . ' ' . ($namaBulanIndo[(int)date('m')] ?? date('F')) . ' ' . date('Y');
+$namaDesaClean = preg_replace('/^Desa\s+/i', '', $aturan['desa'] ?? 'Sejiram');
+$jabatanKades = !empty($aturan['jabatan_kades']) ? $aturan['jabatan_kades'] : ('Kepala Desa ' . $namaDesaClean);
+$namaKades = (!empty($aturan['nama_kades']) && $aturan['nama_kades'] !== 'Kepala Desa Sejiram') ? $aturan['nama_kades'] : '';
 
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -97,7 +114,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <div class="text-center mb-6">
         <h4 class="font-bold text-base uppercase text-slate-800 underline">REKAPITULASI PEMINJAMAN DAN SIRKULASI BUKU</h4>
-        <p class="text-xs text-slate-500">Periode: Bulan <?= $bulan ?> / Tahun <?= $tahun ?></p>
+        <p class="text-xs text-slate-500">Periode: <?= $namaBulanIndo[(int)$bulan] ?? ('Bulan ' . $bulan) ?> <?= e($tahun) ?></p>
     </div>
 
     <div class="overflow-x-auto">
@@ -149,13 +166,19 @@ require_once __DIR__ . '/includes/header.php';
     <div class="grid grid-cols-2 text-center text-xs mt-12 pt-4">
         <div>
             <p>Mengetahui,</p>
-            <p class="font-bold mb-16"><?= e($aturan['nama_kades']) ?></p>
-            <p class="font-bold underline uppercase">( .................................................. )</p>
-            <p class="text-[11px] text-slate-500">Pemerintah Desa Sejiram</p>
+            <p class="font-bold mb-16"><?= e($jabatanKades) ?></p>
+            <p class="font-bold underline uppercase">
+                <?php if ($namaKades !== ''): ?>
+                    <?= e($namaKades) ?>
+                <?php else: ?>
+                    ( .................................................. )
+                <?php endif; ?>
+            </p>
+            <p class="text-[11px] text-slate-500">Pemerintah <?= e($aturan['desa']) ?></p>
         </div>
         <div>
-            <p>Sejiram, <?= date('d F Y') ?></p>
-            <p class="font-bold mb-16">Koordinator Pojok Baca Pa'edah</p>
+            <p><?= e($namaDesaClean) ?>, <?= $tglCetak ?></p>
+            <p class="font-bold mb-16">Koordinator <?= e($aturan['nama_instansi']) ?></p>
             <p class="font-bold underline uppercase"><?= e($aturan['nama_pengelola']) ?></p>
             <p class="text-[11px] text-slate-500">Pengelola Teknis</p>
         </div>

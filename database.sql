@@ -15,12 +15,13 @@ CREATE TABLE IF NOT EXISTS `pengaturan` (
   `jam_operasional` VARCHAR(100) NOT NULL DEFAULT '08.00 - 16.00 WIB',
   `durasi_pinjam_hari` INT NOT NULL DEFAULT 7,
   `denda_per_hari` INT NOT NULL DEFAULT 1000,
-  `nama_kades` VARCHAR(100) NOT NULL,
+  `jabatan_kades` VARCHAR(100) NOT NULL DEFAULT 'Kepala Desa Sejiram',
+  `nama_kades` VARCHAR(100) NOT NULL DEFAULT '',
   `nama_pengelola` VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `pengaturan` (`id`, `nama_instansi`, `desa`, `kabupaten`, `alamat`, `jam_operasional`, `durasi_pinjam_hari`, `denda_per_hari`, `nama_kades`, `nama_pengelola`) 
-VALUES (1, 'Pojok Baca Pa''edah', 'Desa Sejiram', 'Kabupaten Sambas', 'Jl. Pendidikan No. 01, Kantor Desa Sejiram, Kec. Tebas', '08.00 - 15.30 WIB', 7, 1000, 'Kepala Desa Sejiram', 'Syarif Ahmad, S.Pd')
+INSERT INTO `pengaturan` (`id`, `nama_instansi`, `desa`, `kabupaten`, `alamat`, `jam_operasional`, `durasi_pinjam_hari`, `denda_per_hari`, `jabatan_kades`, `nama_kades`, `nama_pengelola`) 
+VALUES (1, 'Pojok Baca Pa''edah', 'Desa Sejiram', 'Kabupaten Sambas', 'Jl. Pendidikan No. 01, Kantor Desa Sejiram, Kec. Tebas', '08.00 - 15.30 WIB', 7, 1000, 'Kepala Desa Sejiram', 'Hemdi', 'Syarif Ahmad, S.Pd')
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
 -- 2. Tabel Pengguna (Login & Hak Akses)

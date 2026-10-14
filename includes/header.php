@@ -13,7 +13,8 @@ $appSetting = $stmtSetting->fetch() ?: [
     'jam_operasional' => '08.00 - 15.30 WIB',
     'durasi_pinjam_hari' => 7,
     'denda_per_hari' => 1000,
-    'nama_kades' => 'Kepala Desa Sejiram',
+    'jabatan_kades' => 'Kepala Desa Sejiram',
+    'nama_kades' => '',
     'nama_pengelola' => 'Pengelola Pojok Baca'
 ];
 $currentPage = basename($_SERVER['PHP_SELF']);
