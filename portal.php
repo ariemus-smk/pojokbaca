@@ -237,9 +237,6 @@ $kategoriBukuList = [
                 <nav class="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-semibold text-slate-600">
                     <a href="#beranda" class="hover:text-emerald-700 transition">Beranda</a>
                     <a href="#katalog" class="hover:text-emerald-700 transition">Katalog Buku</a>
-                    <a href="#daftar-anggota" class="hover:text-emerald-700 text-emerald-700 font-bold transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-id-card text-emerald-600"></i> Daftar Anggota
-                    </a>
                     <a href="#artikel" class="hover:text-emerald-700 transition">Artikel & Literasi</a>
                     <a href="#galeri" class="hover:text-emerald-700 transition">Galeri & PKK</a>
                     <a href="#buku-tamu" class="hover:text-emerald-700 transition">Buku Tamu</a>
@@ -248,7 +245,7 @@ $kategoriBukuList = [
 
                 <div class="flex items-center gap-2">
                     <a href="#daftar-anggota" class="hidden sm:inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm transition">
-                        <i class="fa-solid fa-user-plus"></i> Gabung Anggota
+                        <i class="fa-solid fa-user-plus"></i> Daftar Anggota
                     </a>
                     <a href="#katalog" class="md:hidden text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg font-semibold">Cari Buku</a>
                 </div>
