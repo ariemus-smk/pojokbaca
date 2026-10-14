@@ -279,29 +279,53 @@ $kategoriBukuList = [
                     $coverFile = !empty($bk['cover']) ? 'uploads/covers/' . $bk['cover'] : null;
                     $hasCover = $coverFile && file_exists(__DIR__ . '/' . $coverFile);
                 ?>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition duration-200">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition duration-200 cursor-pointer group"
+                     onclick="bukaModalDetailBuku(this)"
+                     data-id="<?= (int)$bk['id'] ?>"
+                     data-kode="<?= e($bk['kode_buku']) ?>"
+                     data-judul="<?= e($bk['judul']) ?>"
+                     data-penulis="<?= e($bk['penulis']) ?>"
+                     data-penerbit="<?= e($bk['penerbit']) ?>"
+                     data-tahun="<?= (int)$bk['tahun'] ?>"
+                     data-kategori="<?= e($bk['kategori']) ?>"
+                     data-rak="<?= e($bk['lokasi_rak']) ?>"
+                     data-stok-total="<?= (int)$bk['stok_total'] ?>"
+                     data-stok-tersedia="<?= (int)$bk['stok_tersedia'] ?>"
+                     data-kondisi="<?= e($bk['kondisi']) ?>"
+                     data-cover="<?= $hasCover ? e($coverFile) : '' ?>"
+                     title="Klik untuk melihat detail buku: <?= e($bk['judul']) ?>">
                     <div>
                         <div class="aspect-[3/4] bg-slate-100 relative overflow-hidden flex items-center justify-center border-b">
                             <?php if ($hasCover): ?>
-                                <img src="<?= e($coverFile) ?>" alt="<?= e($bk['judul']) ?>" class="w-full h-full object-cover">
+                                <img src="<?= e($coverFile) ?>" alt="<?= e($bk['judul']) ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                             <?php else: ?>
                                 <div class="text-center p-3 text-slate-400">
                                     <i class="fa-solid fa-book text-3xl mb-1 text-slate-300"></i>
                                     <p class="text-[10px] font-semibold uppercase">Pojok Baca</p>
                                 </div>
                             <?php endif; ?>
+                            
+                            <!-- Hover Overlay Detail -->
+                            <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center">
+                                <span class="px-2.5 py-1 rounded-full bg-white/95 text-emerald-800 font-bold text-[11px] shadow-md transform scale-90 group-hover:scale-100 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-info text-xs"></i> Detail
+                                </span>
+                            </div>
+
                             <span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm <?= $bk['stok_tersedia'] > 0 ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white' ?>">
                                 <?= $bk['stok_tersedia'] > 0 ? 'Ready ' . $bk['stok_tersedia'] : 'Kosong' ?>
                             </span>
                         </div>
                         <div class="p-3">
                             <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wide block truncate"><?= e($bk['kategori']) ?></span>
-                            <h3 class="font-bold text-slate-800 text-xs mt-1 line-clamp-2 leading-tight" title="<?= e($bk['judul']) ?>"><?= e($bk['judul']) ?></h3>
+                            <h3 class="font-bold text-slate-800 text-xs mt-1 line-clamp-2 leading-tight group-hover:text-emerald-700 transition" title="<?= e($bk['judul']) ?>"><?= e($bk['judul']) ?></h3>
                             <p class="text-[11px] text-slate-500 mt-1 truncate"><?= e($bk['penulis']) ?></p>
                         </div>
                     </div>
                     <div class="px-3 py-2 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-500">
-                        <span class="font-mono text-emerald-800 font-bold"><?= e($bk['lokasi_rak']) ?></span>
+                        <span class="font-mono text-emerald-800 font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-layer-group text-[10px] text-emerald-600"></i> <?= e($bk['lokasi_rak']) ?>
+                        </span>
                         <span><?= $bk['tahun'] ?></span>
                     </div>
                 </div>
@@ -590,6 +614,131 @@ $kategoriBukuList = [
         </div>
     </div>
 
+    <!-- ================= MODAL DETAIL BUKU (PORTAL) ================= -->
+    <div id="modalDetailBuku" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-5 overflow-y-auto" onclick="if(event.target === this) tutupModalDetailBuku()">
+        <div class="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col my-auto border border-slate-200 animate-fadeIn max-h-[92vh]">
+            
+            <!-- Header Modal -->
+            <div class="bg-gradient-to-r from-emerald-800 to-teal-800 text-white px-6 py-4 flex justify-between items-center flex-shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-emerald-300">
+                        <i class="fa-solid fa-book-bookmark text-sm"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-sm leading-tight">Detail Koleksi Buku</h3>
+                        <p class="text-[11px] text-emerald-200">Katalog Perpustakaan Pojok Baca Pa'edah</p>
+                    </div>
+                </div>
+                <button type="button" onclick="tutupModalDetailBuku()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition focus:outline-none" aria-label="Tutup Modal">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Body Modal (Scrollable) -->
+            <div class="p-6 sm:p-7 overflow-y-auto space-y-6">
+                <!-- Bagian Utama: Cover & Metadata Kunci -->
+                <div class="flex flex-col sm:flex-row gap-5 items-start">
+                    <!-- Cover Buku -->
+                    <div class="w-32 sm:w-44 flex-shrink-0 mx-auto sm:mx-0">
+                        <div class="aspect-[3/4] bg-slate-100 rounded-2xl overflow-hidden shadow-md border border-slate-200 relative flex items-center justify-center">
+                            <img id="modalBukuCover" src="" alt="" class="w-full h-full object-cover hidden">
+                            <div id="modalBukuNoCover" class="text-center p-4 text-slate-400">
+                                <i class="fa-solid fa-book-open text-4xl mb-2 text-slate-300"></i>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pojok Baca</p>
+                                <span class="text-[9px] text-slate-400">Tanpa Cover</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ringkasan Judul, Kategori & Pengarang -->
+                    <div class="flex-grow space-y-3 w-full">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="modalBukuKategori" class="text-[11px] font-bold uppercase bg-emerald-100 text-emerald-800 px-3 py-0.5 rounded-full"></span>
+                            <span id="modalBukuStokBadge" class="text-[11px] font-bold px-3 py-0.5 rounded-full shadow-sm"></span>
+                        </div>
+
+                        <h2 id="modalBukuJudul" class="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug"></h2>
+
+                        <div class="space-y-1.5 text-xs text-slate-600 pt-1">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-user-pen text-emerald-700 w-4 text-center"></i>
+                                <span>Penulis: <strong id="modalBukuPenulis" class="text-slate-800"></strong></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-building text-emerald-700 w-4 text-center"></i>
+                                <span>Penerbit: <strong id="modalBukuPenerbitTahun" class="text-slate-800"></strong></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-layer-group text-emerald-700 w-4 text-center"></i>
+                                <span>Lokasi Rak: <span id="modalBukuRak" class="font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px]"></span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid Spesifikasi Informasi Teknis Buku -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+                        <div class="flex items-center gap-1.5 text-slate-400 text-[11px] font-medium mb-1">
+                            <i class="fa-solid fa-barcode text-emerald-600"></i>
+                            <span>Kode Buku</span>
+                        </div>
+                        <p id="modalBukuKode" class="font-mono font-bold text-xs sm:text-sm text-slate-800 truncate"></p>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+                        <div class="flex items-center gap-1.5 text-slate-400 text-[11px] font-medium mb-1">
+                            <i class="fa-solid fa-boxes-stacked text-emerald-600"></i>
+                            <span>Status Stok</span>
+                        </div>
+                        <p id="modalBukuStokInfo" class="font-bold text-xs sm:text-sm truncate"></p>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+                        <div class="flex items-center gap-1.5 text-slate-400 text-[11px] font-medium mb-1">
+                            <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                            <span>Kondisi Fisik</span>
+                        </div>
+                        <div id="modalBukuKondisiWrapper">
+                            <span id="modalBukuKondisi" class="text-xs font-bold px-2 py-0.5 rounded"></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+                        <div class="flex items-center gap-1.5 text-slate-400 text-[11px] font-medium mb-1">
+                            <i class="fa-solid fa-map-pin text-emerald-600"></i>
+                            <span>Posisi Rak</span>
+                        </div>
+                        <p id="modalBukuLokasiRak" class="font-mono font-bold text-xs sm:text-sm text-slate-800 truncate"></p>
+                    </div>
+                </div>
+
+                <!-- Kotak Edukasi / Petunjuk Layanan Peminjaman -->
+                <div class="bg-emerald-50/70 border border-emerald-200/70 rounded-2xl p-4 flex items-start gap-3 text-xs text-emerald-950">
+                    <span class="w-8 h-8 rounded-xl bg-emerald-700 text-white flex-shrink-0 flex items-center justify-center text-sm shadow-sm">
+                        <i class="fa-solid fa-circle-question"></i>
+                    </span>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-emerald-900">Cara Meminjam & Membaca di Tempat</h4>
+                        <p class="text-emerald-800/90 leading-relaxed text-[11px] sm:text-xs">
+                            Buku ini tersedia untuk dibaca langsung di ruang Pojok Baca atau dipinjam untuk dibawa pulang selama <strong><?= (int)$setting['durasi_pinjam_hari'] ?> hari</strong>. Silakan kunjungi meja petugas perpustakaan di Kantor Desa Sejiram dengan menyebutkan <strong>Kode Buku</strong> di atas.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 flex-shrink-0">
+                <a href="#buku-tamu" onclick="tutupModalDetailBuku()" class="inline-flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-900 font-bold transition">
+                    <i class="fa-solid fa-pen-to-square"></i> Sedang berkunjung? Isi Buku Tamu
+                </a>
+                <button type="button" onclick="tutupModalDetailBuku()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= MODAL BAGIKAN ARTIKEL (PORTAL) ================= -->
     <div id="modalSharePortal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-fadeIn my-auto">
@@ -847,10 +996,86 @@ $kategoriBukuList = [
         }
     }
 
+    // Fungsi Modal Detail Buku Portal
+    function bukaModalDetailBuku(el) {
+        const modal = document.getElementById('modalDetailBuku');
+        if (!modal || !el) return;
+
+        const kode = el.getAttribute('data-kode') || '-';
+        const judul = el.getAttribute('data-judul') || 'Tanpa Judul';
+        const penulis = el.getAttribute('data-penulis') || '-';
+        const penerbit = el.getAttribute('data-penerbit') || '-';
+        const tahun = el.getAttribute('data-tahun') || '-';
+        const kategori = el.getAttribute('data-kategori') || 'Buku';
+        const rak = el.getAttribute('data-rak') || '-';
+        const stokTotal = parseInt(el.getAttribute('data-stok-total') || '0', 10);
+        const stokTersedia = parseInt(el.getAttribute('data-stok-tersedia') || '0', 10);
+        const kondisi = el.getAttribute('data-kondisi') || 'Baik';
+        const cover = el.getAttribute('data-cover') || '';
+
+        // Teks & Info
+        document.getElementById('modalBukuJudul').textContent = judul;
+        document.getElementById('modalBukuKode').textContent = kode;
+        document.getElementById('modalBukuPenulis').textContent = penulis;
+        document.getElementById('modalBukuPenerbitTahun').textContent = penerbit + (tahun !== '-' ? ' (' + tahun + ')' : '');
+        document.getElementById('modalBukuKategori').textContent = kategori;
+        document.getElementById('modalBukuRak').textContent = rak;
+        document.getElementById('modalBukuLokasiRak').textContent = rak;
+
+        // Cover
+        const imgCover = document.getElementById('modalBukuCover');
+        const noCover = document.getElementById('modalBukuNoCover');
+        if (cover) {
+            imgCover.src = cover;
+            imgCover.alt = judul;
+            imgCover.classList.remove('hidden');
+            noCover.classList.add('hidden');
+        } else {
+            imgCover.src = '';
+            imgCover.classList.add('hidden');
+            noCover.classList.remove('hidden');
+        }
+
+        // Badge & Info Stok
+        const badgeStok = document.getElementById('modalBukuStokBadge');
+        const infoStok = document.getElementById('modalBukuStokInfo');
+        if (stokTersedia > 0) {
+            badgeStok.className = 'text-[11px] font-bold px-3 py-0.5 rounded-full shadow-sm bg-emerald-600 text-white';
+            badgeStok.innerHTML = '<i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Tersedia ' + stokTersedia + ' Buku';
+            infoStok.className = 'font-bold text-xs sm:text-sm text-emerald-700 truncate';
+            infoStok.textContent = stokTersedia + ' / ' + stokTotal + ' Tersedia';
+        } else {
+            badgeStok.className = 'text-[11px] font-bold px-3 py-0.5 rounded-full shadow-sm bg-rose-600 text-white';
+            badgeStok.innerHTML = '<i class="fa-solid fa-circle-xmark mr-1 text-[10px]"></i> Sedang Dipinjam';
+            infoStok.className = 'font-bold text-xs sm:text-sm text-rose-600 truncate';
+            infoStok.textContent = 'Kosong (0/' + stokTotal + ')';
+        }
+
+        // Kondisi
+        const elKondisi = document.getElementById('modalBukuKondisi');
+        let kondisiClass = 'bg-emerald-100 text-emerald-800';
+        if (kondisi === 'Rusak Ringan') kondisiClass = 'bg-amber-100 text-amber-800';
+        if (kondisi === 'Rusak Parah') kondisiClass = 'bg-rose-100 text-rose-800';
+        elKondisi.className = 'text-xs font-bold px-2 py-0.5 rounded ' + kondisiClass;
+        elKondisi.textContent = kondisi;
+
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function tutupModalDetailBuku() {
+        const modal = document.getElementById('modalDetailBuku');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+    }
+
     // Tutup modal ketika tombol Escape ditekan atau klik backdrop
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             tutupModalGaleri();
+            tutupModalDetailBuku();
             tutupModalSharePortal();
         }
     });
@@ -859,6 +1084,14 @@ $kategoriBukuList = [
         const modalShare = document.getElementById('modalSharePortal');
         if (e.target === modalShare) {
             tutupModalSharePortal();
+        }
+        const modalDetail = document.getElementById('modalDetailBuku');
+        if (e.target === modalDetail) {
+            tutupModalDetailBuku();
+        }
+        const modalGaleri = document.getElementById('modalGaleri');
+        if (e.target === modalGaleri) {
+            tutupModalGaleri();
         }
     });
     </script>
