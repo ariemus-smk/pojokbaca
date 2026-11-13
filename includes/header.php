@@ -62,6 +62,9 @@ $pendingAnggotaCount = (int)$pdo->query("SELECT COUNT(*) FROM anggota WHERE stat
                     <a href="buku.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'buku.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
                         <i class="fa-solid fa-book w-5 text-emerald-300"></i> Koleksi Buku
                     </a>
+                    <a href="ebook.php" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition <?= $currentPage === 'ebook.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
+                        <i class="fa-solid fa-file-pdf w-5 text-emerald-300"></i> E-Book Digital (PDF)
+                    </a>
                     <a href="anggota.php" class="flex items-center justify-between px-3 py-2.5 rounded-lg transition <?= $currentPage === 'anggota.php' ? 'bg-emerald-950 text-white shadow-inner font-bold' : 'hover:bg-emerald-700 text-emerald-100' ?>">
                         <div class="flex items-center gap-3">
                             <i class="fa-solid fa-users w-5 text-emerald-300"></i>

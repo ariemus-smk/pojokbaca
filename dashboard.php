@@ -12,6 +12,7 @@ $totalTersedia = $pdo->query("SELECT COALESCE(SUM(stok_tersedia), 0) FROM buku")
 $totalAnggota = $pdo->query("SELECT COUNT(*) FROM anggota WHERE status = 'Aktif'")->fetchColumn();
 $totalDipinjam = $pdo->query("SELECT COUNT(*) FROM peminjaman WHERE status = 'Dipinjam'")->fetchColumn();
 $totalTerlambat = $pdo->query("SELECT COUNT(*) FROM peminjaman WHERE status = 'Dipinjam' AND jatuh_tempo < CURDATE()")->fetchColumn();
+$statEbookDash = $pdo->query("SELECT COUNT(*) AS total, COALESCE(SUM(views),0) AS views, COALESCE(SUM(downloads),0) AS downloads FROM ebook")->fetch() ?: ['total' => 0, 'views' => 0, 'downloads' => 0];
 
 // Statistik Per 7 Kategori Buku
 $stmtKat = $pdo->query("SELECT kategori, COUNT(*) as jml_judul, COALESCE(SUM(stok_total),0) as jml_stok FROM buku GROUP BY kategori");
@@ -86,6 +87,26 @@ require_once __DIR__ . '/includes/header.php';
         <h3 class="text-2xl font-bold text-teal-600 mt-1"><?= (int)$totalTersedia ?></h3>
         <p class="text-[11px] text-slate-400 mt-1">Tersedia Dipinjam</p>
     </div>
+</div>
+
+<!-- Ringkasan Koleksi E-Book Digital (PDF) -->
+<div class="bg-gradient-to-r from-emerald-800 to-teal-800 text-white p-5 rounded-2xl shadow-sm mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center text-rose-300 text-xl flex-shrink-0">
+            <i class="fa-solid fa-file-pdf"></i>
+        </div>
+        <div>
+            <h3 class="font-bold text-base">Layanan E-Book Digital (PDF)</h3>
+            <p class="text-xs text-emerald-100">
+                <strong><?= (int)$statEbookDash['total'] ?></strong> judul E-Book &bull;
+                <strong><?= (int)$statEbookDash['views'] ?></strong> kali dibaca online &bull;
+                <strong><?= (int)$statEbookDash['downloads'] ?></strong> kali diunduh publik
+            </p>
+        </div>
+    </div>
+    <a href="ebook.php" class="bg-white text-emerald-800 hover:bg-emerald-50 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap flex items-center gap-1.5">
+        Kelola E-Book <i class="fa-solid fa-arrow-right"></i>
+    </a>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

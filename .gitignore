@@ -81,6 +81,9 @@ uploads/artikel/*
 uploads/galeri/*
 !uploads/galeri/.gitkeep
 
+uploads/ebooks/*
+!uploads/ebooks/.gitkeep
+
 # Pertahankan banner resmi di folder uploads/img
 !uploads/img/banner.jpeg
 

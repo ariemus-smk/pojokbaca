@@ -146,6 +146,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['daftar_anggot
 $totalJudul = $pdo->query("SELECT COUNT(*) FROM buku")->fetchColumn();
 $totalStok = $pdo->query("SELECT COALESCE(SUM(stok_total), 0) FROM buku")->fetchColumn();
 $totalPengunjung = $pdo->query("SELECT COUNT(*) FROM kunjungan")->fetchColumn();
+$totalEbook = $pdo->query("SELECT COUNT(*) FROM ebook WHERE status = 'Publish'")->fetchColumn();
+
+if (!function_exists('formatUkuranPortal')) {
+    function formatUkuranPortal(int $bytes): string {
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2, ',', '.') . ' MB';
+        }
+        if ($bytes >= 1024) {
+            return number_format($bytes / 1024, 1, ',', '.') . ' KB';
+        }
+        return $bytes . ' B';
+    }
+}
 
 // Pencarian Buku Publik
 $cariBuku = trim($_GET['cari_buku'] ?? '');
@@ -167,6 +180,29 @@ $sqlBuku .= " ORDER BY id DESC LIMIT 12";
 $stmtBuku = $pdo->prepare($sqlBuku);
 $stmtBuku->execute($paramsBuku);
 $koleksiBuku = $stmtBuku->fetchAll();
+
+// Pencarian E-Book PDF Publik
+$cariEbook = trim($_GET['cari_ebook'] ?? '');
+$katEbook = $_GET['kategori_ebook'] ?? '';
+
+$sqlEbook = "SELECT * FROM ebook WHERE status = 'Publish'";
+$paramsEbook = [];
+if (!empty($katEbook)) {
+    $sqlEbook .= " AND kategori = ?";
+    $paramsEbook[] = $katEbook;
+}
+if (!empty($cariEbook)) {
+    $sqlEbook .= " AND (judul LIKE ? OR penulis LIKE ? OR penerbit LIKE ? OR kode_ebook LIKE ? OR deskripsi LIKE ?)";
+    $paramsEbook[] = "%$cariEbook%";
+    $paramsEbook[] = "%$cariEbook%";
+    $paramsEbook[] = "%$cariEbook%";
+    $paramsEbook[] = "%$cariEbook%";
+    $paramsEbook[] = "%$cariEbook%";
+}
+$sqlEbook .= " ORDER BY id DESC LIMIT 12";
+$stmtEbook = $pdo->prepare($sqlEbook);
+$stmtEbook->execute($paramsEbook);
+$koleksiEbook = $stmtEbook->fetchAll();
 
 // Galeri Terbaru (Max 8 foto)
 $stmtGaleri = $pdo->query("SELECT * FROM galeri ORDER BY tanggal DESC, id DESC LIMIT 8");
@@ -237,6 +273,7 @@ $kategoriBukuList = [
                 <nav class="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-semibold text-slate-600">
                     <a href="#beranda" class="hover:text-emerald-700 transition">Beranda</a>
                     <a href="#katalog" class="hover:text-emerald-700 transition">Katalog Buku</a>
+                    <a href="#ebook" class="hover:text-emerald-700 transition">E-Book PDF</a>
                     <a href="#artikel" class="hover:text-emerald-700 transition">Artikel & Literasi</a>
                     <a href="#galeri" class="hover:text-emerald-700 transition">Galeri & PKK</a>
                     <a href="#buku-tamu" class="hover:text-emerald-700 transition">Buku Tamu</a>
@@ -299,12 +336,14 @@ $kategoriBukuList = [
                         </button>
                     </form>
 
-                    <!-- CTA Registrasi Anggota Cepat -->
+                    <!-- CTA Registrasi Anggota & E-Book Cepat -->
                     <div class="flex flex-wrap items-center gap-3 pt-1">
                         <a href="#daftar-anggota" class="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
                             <i class="fa-solid fa-id-card text-amber-900"></i> Daftar Anggota Pemustaka Gratis
                         </a>
-                        <span class="text-xs text-emerald-200 hidden sm:inline"><i class="fa-solid fa-check-circle text-emerald-300 mr-1"></i>Pinjam buku pulang & gratis seumur hidup</span>
+                        <a href="#ebook" class="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/30 text-white font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl transition">
+                            <i class="fa-solid fa-file-pdf text-rose-300"></i> Baca E-Book PDF (<?= (int)$totalEbook ?>)
+                        </a>
                     </div>
 
                     <!-- Angka Statistik Mini -->
@@ -440,6 +479,128 @@ $kategoriBukuList = [
                             <i class="fa-solid fa-layer-group text-[10px] text-emerald-600"></i> <?= e($bk['lokasi_rak']) ?>
                         </span>
                         <span><?= $bk['tahun'] ?></span>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- Section Katalog E-Book Digital (PDF) -->
+    <section id="ebook" class="py-16 bg-gradient-to-b from-white to-emerald-50/40 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-5 mb-8">
+                <div>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-200 px-3 py-1 rounded-full mb-2">
+                        <i class="fa-solid fa-file-pdf"></i> Pustaka Digital Gratis
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Koleksi E-Book Digital (PDF)</h2>
+                    <p class="text-sm text-slate-500 mt-1">Cari, baca langsung di layar perangkat Anda, atau unduh buku PDF secara gratis kapan saja.</p>
+                </div>
+
+                <!-- Pencarian & Filter E-Book -->
+                <form method="GET" action="#ebook" class="w-full lg:w-auto flex flex-col sm:flex-row flex-wrap gap-2">
+                    <div class="relative flex-1 sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 text-xs"></i>
+                        <input type="text" name="cari_ebook" value="<?= e($cariEbook) ?>" placeholder="Cari judul atau penulis e-book..." class="w-full bg-white text-xs border border-slate-300 rounded-xl pl-8 pr-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm">
+                    </div>
+                    <select name="kategori_ebook" onchange="this.form.submit()" class="bg-white text-xs border border-slate-300 rounded-xl px-3 py-2.5 font-medium outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm">
+                        <option value="">Semua Kategori E-Book</option>
+                        <?php foreach ($kategoriBukuList as $kb): ?>
+                        <option value="<?= $kb ?>" <?= $katEbook === $kb ? 'selected' : '' ?>><?= $kb ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm">
+                        Cari E-Book
+                    </button>
+                    <?php if (!empty($katEbook) || !empty($cariEbook)): ?>
+                    <a href="portal.php#ebook" class="bg-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-300 transition text-center">Reset</a>
+                    <?php endif; ?>
+                </form>
+            </div>
+
+            <?php if (empty($koleksiEbook)): ?>
+            <div class="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-200">
+                <i class="fa-solid fa-file-pdf text-4xl mb-3 text-rose-300"></i>
+                <p class="font-semibold text-slate-700">
+                    <?= (!empty($cariEbook) || !empty($katEbook)) ? 'E-Book PDF yang Anda cari tidak ditemukan.' : 'Belum ada koleksi E-Book PDF yang dipublikasikan.' ?>
+                </p>
+                <p class="text-xs mt-1">
+                    <?= (!empty($cariEbook) || !empty($katEbook)) ? 'Coba kata kunci atau kategori yang berbeda.' : 'Admin atau petugas perpustakaan dapat mengunggah E-Book PDF melalui panel manajemen.' ?>
+                </p>
+            </div>
+            <?php else: ?>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <?php foreach ($koleksiEbook as $eb):
+                    $ebCoverFile = !empty($eb['cover']) ? 'uploads/covers/' . $eb['cover'] : null;
+                    $ebHasCover = $ebCoverFile && file_exists(__DIR__ . '/' . $ebCoverFile);
+                    $ebSizeText = formatUkuranPortal((int)$eb['ukuran_file']);
+                ?>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition duration-200 group">
+                    <div class="cursor-pointer flex-1 flex flex-col"
+                         onclick="bukaModalDetailEbook(this)"
+                         data-id="<?= (int)$eb['id'] ?>"
+                         data-kode="<?= e($eb['kode_ebook']) ?>"
+                         data-judul="<?= e($eb['judul']) ?>"
+                         data-penulis="<?= e($eb['penulis']) ?>"
+                         data-penerbit="<?= e($eb['penerbit']) ?>"
+                         data-tahun="<?= (int)$eb['tahun'] ?>"
+                         data-kategori="<?= e($eb['kategori']) ?>"
+                         data-deskripsi="<?= e($eb['deskripsi'] ?? '') ?>"
+                         data-ukuran="<?= e($ebSizeText) ?>"
+                         data-views="<?= (int)$eb['views'] ?>"
+                         data-downloads="<?= (int)$eb['downloads'] ?>"
+                         data-cover="<?= $ebHasCover ? e($ebCoverFile) : '' ?>">
+                        <div class="aspect-[16/10] bg-gradient-to-br from-rose-50 via-slate-50 to-emerald-50 relative overflow-hidden flex items-center justify-center border-b border-slate-100">
+                            <?php if ($ebHasCover): ?>
+                                <img src="<?= e($ebCoverFile) ?>" alt="<?= e($eb['judul']) ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            <?php else: ?>
+                                <div class="text-center p-4">
+                                    <div class="w-14 h-16 mx-auto rounded-xl bg-white shadow-sm border border-rose-200 flex flex-col items-center justify-center text-rose-600 mb-2">
+                                        <i class="fa-solid fa-file-pdf text-2xl"></i>
+                                        <span class="text-[9px] font-black tracking-wider mt-0.5">PDF</span>
+                                    </div>
+                                    <p class="text-[11px] font-bold text-slate-500">E-Book Pojok Baca</p>
+                                </div>
+                            <?php endif; ?>
+
+                            <span class="absolute top-2.5 left-2.5 bg-rose-600 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                                <i class="fa-solid fa-file-pdf"></i> PDF
+                            </span>
+                            <span class="absolute top-2.5 right-2.5 bg-slate-900/75 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-sm">
+                                <?= e($ebSizeText) ?>
+                            </span>
+                        </div>
+
+                        <div class="p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wide block truncate"><?= e($eb['kategori']) ?></span>
+                                <h3 class="font-bold text-slate-900 text-sm mt-1 line-clamp-2 leading-snug group-hover:text-emerald-700 transition" title="<?= e($eb['judul']) ?>">
+                                    <?= e($eb['judul']) ?>
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-1 truncate">
+                                    <i class="fa-solid fa-user-pen text-[10px] text-slate-400 mr-1"></i><?= e($eb['penulis']) ?> &bull; <?= (int)$eb['tahun'] ?>
+                                </p>
+                                <?php if (!empty($eb['deskripsi'])): ?>
+                                <p class="text-[11px] text-slate-500 mt-2 line-clamp-2 leading-relaxed"><?= e($eb['deskripsi']) ?></p>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="flex items-center justify-between text-[11px] text-slate-400 pt-3 mt-3 border-t border-slate-100">
+                                <span><i class="fa-solid fa-eye text-emerald-600 mr-1"></i><?= (int)$eb['views'] ?> baca</span>
+                                <span><i class="fa-solid fa-download text-blue-600 mr-1"></i><?= (int)$eb['downloads'] ?> unduh</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 grid grid-cols-2 gap-2">
+                        <a href="baca_ebook.php?id=<?= (int)$eb['id'] ?>" onclick="event.stopPropagation()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold py-2 px-3 rounded-xl text-center transition flex items-center justify-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-book-open"></i> Baca
+                        </a>
+                        <a href="baca_ebook.php?id=<?= (int)$eb['id'] ?>&action=download" onclick="event.stopPropagation()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold py-2 px-3 rounded-xl text-center transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-download text-blue-600"></i> Unduh
+                        </a>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -942,6 +1103,7 @@ $kategoriBukuList = [
                     <h5 class="font-bold text-white text-xs uppercase tracking-wider mb-3">Tautan Cepat</h5>
                     <ul class="space-y-2 text-xs">
                         <li><a href="#katalog" class="hover:text-white transition">Katalog 7 Kategori Buku</a></li>
+                        <li><a href="#ebook" class="hover:text-white transition">E-Book Digital (PDF)</a></li>
                         <li><a href="#daftar-anggota" class="hover:text-white text-emerald-400 font-semibold transition flex items-center gap-1.5"><i class="fa-solid fa-id-card text-[11px]"></i> Daftar Anggota Baru</a></li>
                         <li><a href="#artikel" class="hover:text-white transition">Artikel Literasi & Warta Desa</a></li>
                         <li><a href="#galeri" class="hover:text-white transition">Dokumentasi Kegiatan & PKK</a></li>
@@ -1124,6 +1286,73 @@ $kategoriBukuList = [
                 <button type="button" onclick="tutupModalDetailBuku()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition">
                     Tutup
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL DETAIL E-BOOK PDF (PORTAL) ================= -->
+    <div id="modalDetailEbook" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-5 overflow-y-auto" onclick="if(event.target === this) tutupModalDetailEbook()">
+        <div class="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col my-auto border border-slate-200 max-h-[92vh]">
+            <div class="bg-gradient-to-r from-emerald-800 to-teal-800 text-white px-6 py-4 flex justify-between items-center flex-shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-rose-300">
+                        <i class="fa-solid fa-file-pdf text-sm"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-sm leading-tight">Detail E-Book Digital (PDF)</h3>
+                        <p class="text-[11px] text-emerald-200">Baca Langsung atau Unduh Gratis</p>
+                    </div>
+                </div>
+                <button type="button" onclick="tutupModalDetailEbook()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition focus:outline-none" aria-label="Tutup Modal">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <div class="p-6 sm:p-7 overflow-y-auto space-y-5">
+                <div class="flex flex-col sm:flex-row gap-5 items-start">
+                    <div class="w-32 sm:w-40 flex-shrink-0 mx-auto sm:mx-0">
+                        <div class="aspect-[3/4] bg-rose-50 rounded-2xl overflow-hidden shadow-md border border-slate-200 relative flex items-center justify-center">
+                            <img id="modalEbookCover" src="" alt="" class="w-full h-full object-cover hidden">
+                            <div id="modalEbookNoCover" class="text-center p-4 text-rose-500">
+                                <i class="fa-solid fa-file-pdf text-4xl mb-2"></i>
+                                <p class="text-[10px] font-bold uppercase tracking-wider">E-Book PDF</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow space-y-3 w-full">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="modalEbookKategori" class="text-[11px] font-bold uppercase bg-emerald-100 text-emerald-800 px-3 py-0.5 rounded-full"></span>
+                            <span id="modalEbookUkuran" class="text-[11px] font-bold bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full"></span>
+                        </div>
+                        <h2 id="modalEbookJudul" class="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug"></h2>
+                        <div class="space-y-1.5 text-xs text-slate-600 pt-1">
+                            <div><i class="fa-solid fa-barcode text-emerald-700 w-4 text-center mr-1"></i> Kode: <strong id="modalEbookKode" class="font-mono text-slate-800"></strong></div>
+                            <div><i class="fa-solid fa-user-pen text-emerald-700 w-4 text-center mr-1"></i> Penulis: <strong id="modalEbookPenulis" class="text-slate-800"></strong></div>
+                            <div><i class="fa-solid fa-building text-emerald-700 w-4 text-center mr-1"></i> Penerbit: <strong id="modalEbookPenerbitTahun" class="text-slate-800"></strong></div>
+                            <div><i class="fa-solid fa-chart-simple text-emerald-700 w-4 text-center mr-1"></i> Statistik: <strong id="modalEbookStatistik" class="text-slate-800"></strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="modalEbookDescWrapper" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 hidden">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Sinopsis / Deskripsi</p>
+                    <p id="modalEbookDeskripsi" class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line"></p>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
+                <button type="button" onclick="tutupModalDetailEbook()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold transition">
+                    Tutup
+                </button>
+                <div class="flex flex-wrap gap-2">
+                    <a id="modalEbookDownloadLink" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Unduh PDF
+                    </a>
+                    <a id="modalEbookReadLink" href="#" class="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-book-open"></i> Baca Sekarang
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -1460,6 +1689,69 @@ $kategoriBukuList = [
         }
     }
 
+    // Fungsi Modal Detail E-Book Portal
+    function bukaModalDetailEbook(el) {
+        const modal = document.getElementById('modalDetailEbook');
+        if (!modal || !el) return;
+
+        const id = el.getAttribute('data-id') || '';
+        const kode = el.getAttribute('data-kode') || '-';
+        const judul = el.getAttribute('data-judul') || 'Tanpa Judul';
+        const penulis = el.getAttribute('data-penulis') || '-';
+        const penerbit = el.getAttribute('data-penerbit') || '-';
+        const tahun = el.getAttribute('data-tahun') || '-';
+        const kategori = el.getAttribute('data-kategori') || 'E-Book';
+        const deskripsi = el.getAttribute('data-deskripsi') || '';
+        const ukuran = el.getAttribute('data-ukuran') || '0 KB';
+        const views = el.getAttribute('data-views') || '0';
+        const downloads = el.getAttribute('data-downloads') || '0';
+        const cover = el.getAttribute('data-cover') || '';
+
+        document.getElementById('modalEbookKode').textContent = kode;
+        document.getElementById('modalEbookJudul').textContent = judul;
+        document.getElementById('modalEbookPenulis').textContent = penulis;
+        document.getElementById('modalEbookPenerbitTahun').textContent = penerbit + (tahun !== '-' ? ' (' + tahun + ')' : '');
+        document.getElementById('modalEbookKategori').textContent = kategori;
+        document.getElementById('modalEbookUkuran').textContent = 'PDF • ' + ukuran;
+        document.getElementById('modalEbookStatistik').textContent = views + ' dibaca • ' + downloads + ' diunduh';
+
+        document.getElementById('modalEbookReadLink').href = 'baca_ebook.php?id=' + encodeURIComponent(id);
+        document.getElementById('modalEbookDownloadLink').href = 'baca_ebook.php?id=' + encodeURIComponent(id) + '&action=download';
+
+        const imgCover = document.getElementById('modalEbookCover');
+        const noCover = document.getElementById('modalEbookNoCover');
+        if (cover) {
+            imgCover.src = cover;
+            imgCover.alt = judul;
+            imgCover.classList.remove('hidden');
+            noCover.classList.add('hidden');
+        } else {
+            imgCover.src = '';
+            imgCover.classList.add('hidden');
+            noCover.classList.remove('hidden');
+        }
+
+        const descWrap = document.getElementById('modalEbookDescWrapper');
+        const descEl = document.getElementById('modalEbookDeskripsi');
+        if (deskripsi.trim() !== '') {
+            descEl.textContent = deskripsi;
+            descWrap.classList.remove('hidden');
+        } else {
+            descWrap.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function tutupModalDetailEbook() {
+        const modal = document.getElementById('modalDetailEbook');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+    }
+
     function salinKodeReg(kode) {
         if (!kode) return;
         navigator.clipboard.writeText(kode).then(() => {
@@ -1483,6 +1775,7 @@ $kategoriBukuList = [
         if (e.key === 'Escape') {
             tutupModalGaleri();
             tutupModalDetailBuku();
+            tutupModalDetailEbook();
             tutupModalSharePortal();
         }
     });
@@ -1495,6 +1788,10 @@ $kategoriBukuList = [
         const modalDetail = document.getElementById('modalDetailBuku');
         if (e.target === modalDetail) {
             tutupModalDetailBuku();
+        }
+        const modalDetailEbook = document.getElementById('modalDetailEbook');
+        if (e.target === modalDetailEbook) {
+            tutupModalDetailEbook();
         }
         const modalGaleri = document.getElementById('modalGaleri');
         if (e.target === modalGaleri) {
